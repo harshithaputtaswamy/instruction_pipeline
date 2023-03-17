@@ -64,10 +64,8 @@ print_registers(CPU *cpu){
     printf("================================\n\n");
 }
 
+
 void print_display(CPU *cpu, int cycle){
-    printf("================================\n");
-    printf("Clock Cycle #: %d\n", cycle);
-    printf("--------------------------------\n");
 
    for (int reg=0; reg<REG_COUNT; reg++) {
        
@@ -91,6 +89,9 @@ int CPU_run(CPU *cpu, char* filename) {
 
     for (;;) {
         cpu->clock_cycle++;
+        printf("================================\n");
+        printf("Clock Cycle #: %d\n", cpu->clock_cycle);
+        printf("--------------------------------\n");
 
         instrcution_fetch();
         instrcution_decode();
@@ -104,18 +105,21 @@ int CPU_run(CPU *cpu, char* filename) {
         memory_2(cpu);
         write_back(cpu);
 
+        print_display(cpu, cpu->clock_cycle);
+
         if (break_loop) {
             break;
         }
     }
-    print_registers(cpu);
 
-    printf("Stalled cycles due to structural hazard: %d\n", stalled_cycles);
+    print_registers(cpu);
+    printf("Stalled cycles due to data hazard: %d\n", stalled_cycles);
     printf("Total execution cycles: %d\n", cpu->clock_cycle);
     printf("Total instruction simulated: %d\n", instruction_count);
     printf("IPC: %.6f\n", (float)instruction_count/(float)(cpu->clock_cycle));
     return 0;
 }
+
 
 Register *
 create_registers(int size) {
@@ -130,6 +134,7 @@ create_registers(int size) {
     return regs;
 }
 
+
 int read_memory_map() {
     FILE *memory_fd = fopen("./memory_map.txt", "r");
     char val[10];
@@ -140,6 +145,7 @@ int read_memory_map() {
     };
     return 0;
 }
+
 
 int read_instruction_file(char* filename) {
     char base_dir[250] = "./programs/programs/";
@@ -155,6 +161,7 @@ int read_instruction_file(char* filename) {
     return 0;
 }
 
+
 int instrcution_fetch() {
 
     stall = false;
@@ -162,25 +169,26 @@ int instrcution_fetch() {
 
     if (program_counter < instruction_count) {
 
-        if (strlen(curr_id_struct_mem1.instruction) != 0) {
-            if (strcmp(curr_id_struct_mem1.opcode, "ld") == 0) {
-                stall = true;
-                stalled_cycles++;
-            }
-        }
+        // if (strlen(curr_id_struct_mem1.instruction) != 0) {      // condition to induce structural hazard
+        //     if (strcmp(curr_id_struct_mem1.opcode, "ld") == 0) {
+        //         stall = true;
+        //         stalled_cycles++;
+        //     }
+        // }
 
-        if (!stall){
+        if (!stall) {
             strcpy(curr_id_struct_if.instruction, instruction_set[program_counter]);
             program_counter++;
-            // printf("IF                       : %s\n", curr_id_struct_if.instruction);
+            // printf("IF             : %s\n", curr_id_struct_if.instruction);
         }
-        else{
+        else {
             strcpy(curr_id_struct_if.instruction, "");
         }
     }
 
     return 0;
 }
+
 
 int instrcution_decode() {
     char instruction[MAX_INSTRUCTION_LENGTH];
@@ -217,7 +225,7 @@ int instrcution_decode() {
         }
 
         curr_id_struct_decode.num_var = counter;
-        // printf("ID                       : %s %s %s %s\n", curr_id_struct_decode.instruction, curr_id_struct_decode.opcode, curr_id_struct_decode.operand_1, curr_id_struct_decode.operand_2);
+        // printf("ID             : %s %s %s %s\n", curr_id_struct_decode.instruction, curr_id_struct_decode.opcode, curr_id_struct_decode.operand_1, curr_id_struct_decode.operand_2);
     }
     else {
         strcpy(curr_id_struct_decode.instruction, "");
@@ -225,6 +233,7 @@ int instrcution_decode() {
 
     return 0;
 }
+
 
 int instrcution_analyze() {     // skipping implementation
 
@@ -237,7 +246,7 @@ int instrcution_analyze() {     // skipping implementation
     curr_id_struct_ia = prev_id_struct_decode;
 
     if (strlen(prev_id_struct_decode.instruction) != 0) {
-        // printf("IA                       : %s\n", curr_id_struct_ia.instruction);
+        // printf("IA             : %s\n", curr_id_struct_ia.instruction);
     }
     else {
         strcpy(curr_id_struct_ia.instruction, "");
@@ -291,7 +300,7 @@ int register_read(CPU *cpu) {
             curr_id_struct_rr.value_1 = values[0];
             curr_id_struct_rr.value_2 = values[1];
         }
-        // printf("RR                       : %s %d %d %d\n", curr_id_struct_rr.instruction, addr, curr_id_struct_rr.value_1, curr_id_struct_rr.value_2);
+        // printf("RR             : %s %d %d %d\n", curr_id_struct_rr.instruction, addr, curr_id_struct_rr.value_1, curr_id_struct_rr.value_2);
     }
     else {
         strcpy(curr_id_struct_rr.instruction, "");
@@ -326,12 +335,12 @@ int add_stage(CPU *cpu) {
             if (strstr(curr_id_struct_add.operand_1, "#")) {
                 register_address += 1;
                 addr = atoi(register_address);
-                if (addr > 999) {
-                    value = memory_map[addr/4];   // Read from memory map file
-                }
-                else {
+                // if (addr > 999) {
+                //     value = memory_map[addr/4];   // Read from memory map file
+                // }
+                // else {
                     value = addr;   //use the value given
-                }
+                // }
             }
             else {
                     register_address += 1;
@@ -343,7 +352,7 @@ int add_stage(CPU *cpu) {
             curr_id_struct_add.wb_value = value;
         }
 
-        // printf("ADD                      : %s %d\n", curr_id_struct_add.instruction, curr_id_struct_add.wb_value);
+        // printf("ADD            : %s %d\n", curr_id_struct_add.instruction, curr_id_struct_add.wb_value);
     }
     else {
         strcpy(curr_id_struct_add.instruction, "");
@@ -365,7 +374,7 @@ int multiplier_stage() {
             curr_id_struct_mul.wb_value = curr_id_struct_mul.value_1 * curr_id_struct_mul.value_2;
         }
 
-        // printf("MUL                      : %s %d\n", curr_id_struct_mul.instruction, curr_id_struct_mul.wb_value);
+        // printf("MUL            : %s %d\n", curr_id_struct_mul.instruction, curr_id_struct_mul.wb_value);
     }
     else {
         strcpy(curr_id_struct_mul.instruction, "");
@@ -387,7 +396,7 @@ int divition_stage() {
         if (strcmp(curr_id_struct_div.opcode, "div") == 0) {
             curr_id_struct_div.wb_value = curr_id_struct_div.value_1 / curr_id_struct_div.value_2;
         }
-        // printf("DIV                      : %s %d\n", curr_id_struct_div.instruction, curr_id_struct_add.wb_value);
+        // printf("DIV            : %s %d\n", curr_id_struct_div.instruction, curr_id_struct_add.wb_value);
     }
     else {
         strcpy(curr_id_struct_div.instruction, "");
@@ -406,7 +415,7 @@ int branch() {
     curr_id_struct_br = prev_id_struct_div;
 
     if (strlen(prev_id_struct_div.instruction) != 0) {
-        // printf("BR                       : %s\n", curr_id_struct_br.instruction);
+        // printf("BR             : %s %d\n", curr_id_struct_br.instruction, curr_id_struct_div.wb_value);
     }
     else {
         strcpy(curr_id_struct_br.instruction, "");
@@ -425,7 +434,7 @@ int memory_1() {
     curr_id_struct_mem1 = prev_id_struct_br;
 
     if (strlen(prev_id_struct_br.instruction) != 0) {
-        // printf("Mem1                     : %s\n", curr_id_struct_mem1.instruction);
+        // printf("Mem1           : %s %d\n", curr_id_struct_mem1.instruction, curr_id_struct_mem1.wb_value);
     }
     else {
         strcpy(curr_id_struct_mem1.instruction, "");
@@ -437,18 +446,19 @@ int memory_1() {
 int memory_2(CPU *cpu) {
     int addr;
     char *register_address;
+    char *register_number;
     int value;
+
     prev_id_struct_mem2 = curr_id_struct_mem2;
-        
-    if (strcmp(prev_id_struct_mem2.opcode, "ret") == 0){
+
+    if (strcmp(prev_id_struct_mem2.opcode, "ret") == 0) {
         return 0;
     }
 
     curr_id_struct_mem2 = prev_id_struct_mem1;
 
     if (strlen(prev_id_struct_mem1.instruction) != 0) {
-        // printf("Mem2                     : %s %d %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.wb_value, curr_id_struct_mem2.value_1);
-        if (strcmp(curr_id_struct_mem2.opcode, "ld") == 0) {
+        if (strcmp(curr_id_struct_mem2.opcode, "ld") == 0) {    //Load instruction
             register_address = curr_id_struct_mem2.operand_1;
 
             if (strstr(curr_id_struct_mem2.operand_1, "#")) {
@@ -470,7 +480,18 @@ int memory_2(CPU *cpu) {
             }
             curr_id_struct_mem2.wb_value = value;
         }
-        // printf("Mem2                     : %s %d %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.wb_value, addr);
+        else if (strcmp(curr_id_struct_mem2.opcode, "st") == 0) {   //store instruction 
+            register_number = curr_id_struct_mem2.register_addr;
+            register_number += 1;
+
+            addr = atoi(register_number);
+            if (!((cpu->regs[addr]).is_writing)) {
+                value = cpu->regs[addr].value;    //get value from Register in operand1
+            }
+            curr_id_struct_mem2.wb_value = value;
+        }
+
+        // printf("Mem2           : %s %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.wb_value);
     }
     else {
         strcpy(curr_id_struct_mem2.instruction, "");
@@ -483,10 +504,23 @@ int write_back(CPU *cpu) {
     char *register_addr;
     prev_id_struct_wb = curr_id_struct_wb;
     curr_id_struct_wb = prev_id_struct_mem2;
+    int addr;
 
     if (strlen(prev_id_struct_mem2.instruction) != 0) {
         if (strcmp(curr_id_struct_wb.opcode, "ret") == 0) {
             break_loop = true;
+        }
+        else if (strcmp(curr_id_struct_wb.opcode, "st") == 0) {
+            register_addr = curr_id_struct_wb.operand_1;
+            register_addr += 1;
+            if (strchr(curr_id_struct_wb.register_addr, 'R') != NULL) {
+                addr = cpu->regs[atoi(register_addr)/4].value;   // address found in the given register
+            }
+            else {
+                addr = atoi(register_addr);
+            }
+            // printf("address %d\n", addr);
+            memory_map[addr/4] = curr_id_struct_wb.wb_value;
         }
         else {
             register_addr = curr_id_struct_wb.register_addr;
@@ -499,7 +533,7 @@ int write_back(CPU *cpu) {
                 cpu->regs[atoi(register_addr)].is_writing = false;
             }
         }
-        // printf("WB                       : %s %d\n", curr_id_struct_wb.instruction, curr_id_struct_wb.wb_value);
+        // printf("WB             : %s %d\n", curr_id_struct_wb.instruction, curr_id_struct_wb.wb_value);
     }
     else {
         strcpy(curr_id_struct_wb.instruction, "");

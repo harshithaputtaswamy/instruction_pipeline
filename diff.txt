@@ -1,0 +1,4 @@
+1261c1261
+< Stalled cycles due to data hazard: 0
+---
+> Stalled cycles due to data hazard: 0 

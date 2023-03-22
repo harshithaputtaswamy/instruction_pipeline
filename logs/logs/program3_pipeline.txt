@@ -23,7 +23,7 @@ IF             : 0012 set R15 #5824
 ================================
 Clock Cycle #: 5
 --------------------------------
-ADD            : 0000 set R10 #6036 
+ADD            : 0000 set R10 #6036         // TODO: forwarding R10 value to add stage
 RR             : 0004 mul R7 R10 #64 
 IA             : 0008 set R6 #64
 ID             : 0012 set R15 #5824

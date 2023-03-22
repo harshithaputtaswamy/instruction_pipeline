@@ -30,6 +30,7 @@ typedef struct decoded_instruction {
     int value_1;
     int value_2;
     int wb_value;
+    bool dependency;
 
 } decoded_instruction;
 
@@ -51,22 +52,28 @@ int instrcution_fetch();
 
 int instrcution_decode();
 
-int instrcution_analyze();
+int instrcution_analyze(CPU *cpu);
 
 int register_read(CPU *cpu);
 
 int add_stage(CPU *cpu);
 
-int multiplier_stage();
+int multiplier_stage(CPU *cpu);
 
-int divition_stage();
+int divition_stage(CPU *cpu);
 
-int branch();
+int branch(CPU *cpu);
 
-int memory_1();
+int memory_1(CPU *cpu);
 
 int memory_2(CPU *cpu);
 
 int write_back(CPU *cpu);
+
+int enqueue(char*);
+
+int dequeue();
+
+char* search_queue(char*);
 
 #endif

@@ -111,8 +111,8 @@ Clock Cycle #: 13
 WB             : 0008 set R15 #5996
 MEM2           : 0012 set R6 #2924
 MEM1           : 0016 set R8 #7272
-ADD            : 0020 st R7 #9152       // stalled because of R7, this should not happen
-RR             : 0024 add R4 R7 #56     // this stage should move forward and not wait on r7
+ADD            : 0020 st R7 #9152 
+RR             : 0024 add R4 R7 #56 
 IA             : 0028 div R3 R15 #60 
 ID             : 0032 ld R10 R7 
 IF             : 0036 mul R9 R15 #224 
@@ -298,11 +298,11 @@ Clock Cycle #: 29
 --------------------------------
 WB             : 0048 mul R1 R7 R6 
 MEM2           : 0052 add R13 R4 R3 
-MEM1           : 0056 sub R7 R4 #60     // R7 should have been 1 but it is 0
+MEM1           : 0056 sub R7 R4 #60 
 BR             : 0060 div R4 R5 R12 
 DIV            : 0064 sub R12 R12 R8 
 MUL            : 0068 mul R15 R15 #3
-RR             : 0072 add R8 R8 R7      // hence this line is not stalling
+RR             : 0072 add R8 R8 R7 
 IA             : 0076 mul R2 R7 R7 
 ID             : 0080 st R9 R13 
 IF             : 0084 div R7 R13 #172 
@@ -407,7 +407,7 @@ IF             : 0104 st R1 R15
 ================================
 Clock Cycle #: 39
 --------------------------------
-WB             : 0072 add R8 R8 R7              //edge case - when register address and operand 1 are same
+WB             : 0072 add R8 R8 R7 
 MEM2           : 0076 mul R2 R7 R7 
 MEM1           : 0080 st R9 R13 
 BR             : 0084 div R7 R13 #172 

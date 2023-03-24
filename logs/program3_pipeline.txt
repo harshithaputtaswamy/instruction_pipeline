@@ -390,7 +390,7 @@ BR             : 0056 add R14 R6 R13
 DIV            : 0060 div R13 R6 R11 
 MUL            : 0064 sub R0 R1 #232 
 ADD            : 0068 sub R9 R6 #80 
-RR             : 0072 sub R14 R5 #100 
+RR             : 0072 sub R14 R5 #100       // shouldn't stall here - fixed
 IA             : 0076 mul R15 R1 #48 
 ID             : 0080 div R5 R13 #232 
 IF             : 0084 set R9 #748

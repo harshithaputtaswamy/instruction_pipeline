@@ -383,7 +383,7 @@ int register_read(CPU *cpu) {
 
         if (strcmp(curr_id_struct_rr.opcode, "st") != 0) {
             
-            if (strlen(prev_id_struct_rr.instruction)) {
+            if (strlen(prev_id_struct_rr.instruction) && strcmp(prev_id_struct_rr.opcode, "st") != 0) {
 
                 
                 printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
@@ -393,7 +393,7 @@ int register_read(CPU *cpu) {
                     local_stall = true;
                 }
                 printf("#### 00 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, prev_id_struct_rr.register_addr) == 0 && strcmp(prev_id_struct_rr.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, prev_id_struct_rr.register_addr) == 0) {
                     local_stall = true;
                 }
                 printf("strcmp(prev_id_struct_rr.opcode, add) != 0 | %d\n", (strcmp(prev_id_struct_rr.opcode, "set") != 0));
@@ -409,7 +409,7 @@ int register_read(CPU *cpu) {
             
             printf("prev_id_struct_rr %s\n", prev_id_struct_rr.instruction);
             printf("curr_id_struct_add %s\n", curr_id_struct_add.instruction);
-            if (strlen(curr_id_struct_add.instruction)) {
+            if (strlen(curr_id_struct_add.instruction) && strcmp(curr_id_struct_add.opcode, "st") != 0) {
 
                 // stall if the register addr is same as operand 1 or 2 in mul stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_add.register_addr) == 0) {
@@ -417,12 +417,12 @@ int register_read(CPU *cpu) {
                     local_stall = true;
                 }
                 printf("#### 01 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_add.register_addr) == 0 && strcmp(curr_id_struct_add.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_add.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
 
-                if (local_stall && strcmp(curr_id_struct_add.opcode, "mul")) {
+                if (local_stall && strcmp(curr_id_struct_add.opcode, "mul")) {      // RIGHT UNTIL HERE,    // Donot remove this line
                     local_stall = true;
                     stall = true;
                 }
@@ -432,7 +432,7 @@ int register_read(CPU *cpu) {
                 printf("#### 11 local stall %d\n", local_stall);
             }
 
-            if (strlen(curr_id_struct_mul.instruction)) {
+            if (strlen(curr_id_struct_mul.instruction) && strcmp(curr_id_struct_mul.opcode, "st") != 0) {
 
                 // stall if the register addr is same as operand 1 or 2 in div stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_mul.register_addr) == 0) {
@@ -440,7 +440,7 @@ int register_read(CPU *cpu) {
                     local_stall = true;
                 }
                 printf("#### 02 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mul.register_addr) == 0 && strcmp(curr_id_struct_mul.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mul.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
@@ -455,7 +455,7 @@ int register_read(CPU *cpu) {
                 printf("#### 12 local stall %d\n", local_stall);
             }
 
-            if (strlen(curr_id_struct_div.instruction)) {
+            if (strlen(curr_id_struct_div.instruction) && strcmp(curr_id_struct_div.opcode, "st") != 0) {
 
                 // stall if the register addr is same as operand 1 or 2 in br stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_div.register_addr) == 0) {
@@ -463,42 +463,42 @@ int register_read(CPU *cpu) {
                     local_stall = true;
                 }
                 printf("#### 03 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_div.register_addr) == 0 && strcmp(curr_id_struct_div.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_div.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
                 printf("#### 13 local stall %d\n", local_stall);
             }
 
-            if (strlen(curr_id_struct_br.instruction)) {
+            if (strlen(curr_id_struct_br.instruction) && strcmp(curr_id_struct_br.opcode, "st") != 0) {
                 // stall if the register addr is same as operand 1 or 2 in mem1 stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_br.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
                 printf("#### 04 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_br.register_addr) == 0 && strcmp(curr_id_struct_br.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_br.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
                 printf("#### 14 local stall %d\n", local_stall);
             }
 
-            if (strlen(curr_id_struct_mem1.instruction)) {
+            if (strlen(curr_id_struct_mem1.instruction) && strcmp(curr_id_struct_mem1.opcode, "st") != 0) {
                 // stall if the register addr is same as operand 1 or 2 in mem2 stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_mem1.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
                 printf("#### 05 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mem1.register_addr) == 0 && strcmp(curr_id_struct_mem1.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mem1.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
                 printf("#### 15 local stall %d\n", local_stall);
             }
 
-            if (strlen(curr_id_struct_mem2.instruction)) {
+            if (strlen(curr_id_struct_mem2.instruction) && strcmp(curr_id_struct_mem2.opcode, "st") != 0) {
                 // stall if the register addr is same as operand 1 or 2 in wb stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_mem2.register_addr) == 0) {
                     stall = true;
@@ -506,7 +506,7 @@ int register_read(CPU *cpu) {
                 }
 
                 printf("#### 06 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mem2.register_addr) == 0 && strcmp(curr_id_struct_mem2.opcode, "st") != 0) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mem2.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
                 }
@@ -568,7 +568,7 @@ int register_read(CPU *cpu) {
             printf("#### 3 local stall %d\n", local_stall);
 
             // check if the register addr in rr stage is in use
-            // if (strcmp(curr_id_struct_rr.opcode, "st") == 0) {
+            if (strcmp(curr_id_struct_rr.opcode, "st") == 0) {
                 register_address = curr_id_struct_rr.register_addr;
                 register_address++;
                 addr = atoi(register_address);
@@ -577,7 +577,7 @@ int register_read(CPU *cpu) {
                 if (cpu->regs[addr].is_writing) {
                     local_stall = true;
                 }
-            // }
+            }
 
             if (strstr(curr_id_struct_rr.operand_1, "R")) {
                 register_address = curr_id_struct_rr.operand_1;

@@ -199,33 +199,33 @@ int read_instruction_file(char* filename) {
 
 
 int write_memory_map(char* filename) {
-    char op_filename[50];
-    char base_dir[250] = "./output_memory/";
-    DIR* output_memory_dir = opendir("./output_memory");
+    char *op_filename = "output_memory_map.txt";
+    // char base_dir[250] = "./output_memory/";
+    // DIR* output_memory_dir = opendir("./output_memory");
 
-    if (output_memory_dir) {
-        closedir(output_memory_dir);
-    }
-    else if (ENOENT == errno) {
-        mkdir("./output_memory", 0777);
-    }
+    // if (output_memory_dir) {
+    //     closedir(output_memory_dir);
+    // }
+    // else if (ENOENT == errno) {
+    //     mkdir("./output_memory", 0777);
+    // }
 
-    if (strstr(filename, "1")) {
-        strcpy(op_filename, "output_memory_1.txt");
-    }
-    else if (strstr(filename, "2")) {
-        strcpy(op_filename, "output_memory_2.txt");
-    }
-    else if (strstr(filename, "3")) {
-        strcpy(op_filename, "output_memory_3.txt");
-    }
-    else if (strstr(filename, "4")) {
-        strcpy(op_filename, "output_memory_4.txt");
-    }
+    // if (strstr(filename, "1")) {
+    //     strcpy(op_filename, "output_memory_1.txt");
+    // }
+    // else if (strstr(filename, "2")) {
+    //     strcpy(op_filename, "output_memory_2.txt");
+    // }
+    // else if (strstr(filename, "3")) {
+    //     strcpy(op_filename, "output_memory_3.txt");
+    // }
+    // else if (strstr(filename, "4")) {
+    //     strcpy(op_filename, "output_memory_4.txt");
+    // }
 
-    strcat(base_dir, op_filename);
+    // strcat(base_dir, op_filename);
 
-    FILE *fp = fopen(base_dir, "w+");
+    FILE *fp = fopen(op_filename, "w+");
     char c[100];
     for (int i = 0; i < 16384; i++) {
         sprintf(c, "%d", memory_map[i]);

@@ -1,0 +1,12 @@
+3198c3198
+< REG[ 6]   |   Value=119  
+---
+> REG[ 6]   |   Value=119             // got wrong value
+5712c5712
+< REG[ 4]   |   Value=18088  
+---
+> REG[ 4]   |   Value=18088 
+5738c5738
+< Stalled cycles due to data hazard: 73
+---
+> Stalled cycles due to data hazard: 73 

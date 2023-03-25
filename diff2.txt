@@ -1,0 +1,4 @@
+2038c2038
+< Stalled cycles due to data hazard: 13
+---
+> Stalled cycles due to data hazard: 13 

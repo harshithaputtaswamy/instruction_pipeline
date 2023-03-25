@@ -1,0 +1,28 @@
+4263c4263
+< REG[ 1]   |   Value=47856  
+---
+> REG[ 1]   |   Value=47856       
+4265c4265
+< REG[ 2]   |   Value=582  
+---
+> REG[ 2]   |   Value=582         
+4269c4269
+< REG[ 4]   |   Value=-26267992  
+---
+> REG[ 4]   |   Value=-26267992         
+4275c4275
+< REG[ 7]   |   Value=23928  
+---
+> REG[ 7]   |   Value=23928         
+4281c4281
+< REG[10]   |   Value=-26268672  
+---
+> REG[10]   |   Value=-26268672         
+4289c4289
+< REG[14]   |   Value=680  
+---
+> REG[14]   |   Value=680        
+4295c4295
+< Stalled cycles due to data hazard: 54
+---
+> Stalled cycles due to data hazard: 54 

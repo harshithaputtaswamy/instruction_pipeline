@@ -303,7 +303,7 @@ IF             : 0056 st R9 #9548
 ================================
 Clock Cycle #: 35
 --------------------------------
-WB             : 0036 add R8 R1 #236 
+WB             : 0036 add R8 R1 #236        // R8 value is wrong - TODO
 MUL            : 0040 sub R11 R1 #120 
 ADD            : 0044 sub R11 R13 #216 
 RR             : 0048 sub R5 R2 #168 

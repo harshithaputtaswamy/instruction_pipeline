@@ -48,6 +48,8 @@ int read_memory_map();
 
 int read_instruction_file(char*);
 
+int write_memory_map(char*);
+
 int instrcution_fetch();
 
 int instrcution_decode();

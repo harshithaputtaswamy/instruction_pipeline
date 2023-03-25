@@ -6,13 +6,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
 #include "cpu.h"
 
 #define REG_COUNT 16
 #define MAX_REGISTER_IN_USE 1000
 
 
-char ip_filename[50];
 int memory_map[16384];
 char instruction_set[MAX_INSTRUCTION_COUNT][MAX_INSTRUCTION_LENGTH];
 int instruction_count = 0;
@@ -98,9 +99,6 @@ print_registers(CPU *cpu){
         printf("--------------------------------\n");
     }
     printf("================================\n\n");
-    // for (int i = 0; i < 16384; i++) {
-        // printf("%d ", memory_map[i]);
-    // }
 }
 
 
@@ -148,13 +146,7 @@ int CPU_run(CPU *cpu, char* filename) {
         }
     }
 
-    FILE *fp = fopen("output_memory_3.txt", "w");
-    char c[100];
-    for (int i = 0; i < 16384; i++) {
-        sprintf(c, "%d", memory_map[i]);
-        fprintf(fp, "%s ", c);
-    }
-    fclose(fp);
+    write_memory_map(filename);
 
     print_registers(cpu);
     printf("Stalled cycles due to data hazard: %d\n", stalled_cycles);
@@ -192,7 +184,6 @@ int read_memory_map() {
 
 
 int read_instruction_file(char* filename) {
-    strcpy(ip_filename, filename);
     char base_dir[250] = "./programs/";
     strcat(base_dir, filename);
     
@@ -203,6 +194,45 @@ int read_instruction_file(char* filename) {
         instruction_count++;
     }
     
+    return 0;
+}
+
+
+int write_memory_map(char* filename) {
+    char op_filename[50];
+    char base_dir[250] = "./output_memory/";
+    DIR* output_memory_dir = opendir("./output_memory");
+
+    if (output_memory_dir) {
+        closedir(output_memory_dir);
+    }
+    else if (ENOENT == errno) {
+        mkdir("./output_memory", 0777);
+    }
+
+    if (strstr(filename, "1")) {
+        strcpy(op_filename, "output_memory_1.txt");
+    }
+    else if (strstr(filename, "2")) {
+        strcpy(op_filename, "output_memory_2.txt");
+    }
+    else if (strstr(filename, "3")) {
+        strcpy(op_filename, "output_memory_3.txt");
+    }
+    else if (strstr(filename, "4")) {
+        strcpy(op_filename, "output_memory_4.txt");
+    }
+
+    strcat(base_dir, op_filename);
+
+    FILE *fp = fopen(base_dir, "w+");
+    char c[100];
+    for (int i = 0; i < 16384; i++) {
+        sprintf(c, "%d", memory_map[i]);
+        fprintf(fp, "%s ", c);
+    }
+    fclose(fp);
+
     return 0;
 }
 
@@ -772,9 +802,9 @@ int memory_2(CPU *cpu) {
             register_number += 1;
 
             addr = atoi(register_number);
-            if (!((cpu->regs[addr]).is_writing)) {
-                value = curr_id_struct_mem2.value_1;    //get value from Register in operand1
-            }
+            // if (!((cpu->regs[addr]).is_writing)) {
+                value = cpu->regs[addr].value;    //get value from Register in operand1
+            // }
             curr_id_struct_mem2.wb_value = value;
         }
     }

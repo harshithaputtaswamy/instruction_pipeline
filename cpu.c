@@ -149,7 +149,7 @@ int CPU_run(CPU *cpu, char* filename) {
     write_memory_map(filename);
 
     print_registers(cpu);
-    printf("Stalled cycles due to data hazard: %d\n", stalled_cycles);
+    printf("Stalled cycles due to data hazard: %d \n", stalled_cycles);
     printf("Total execution cycles: %d\n", cpu->clock_cycle);
     printf("Total instruction simulated: %d\n", instruction_count);
     printf("IPC: %.6f\n", (float)instruction_count/(float)(cpu->clock_cycle));

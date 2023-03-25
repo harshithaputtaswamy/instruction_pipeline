@@ -33,7 +33,7 @@ Clock Cycle #: 6
 --------------------------------
 MUL            : 0000 set R1 #452
 ADD            : 0004 sub R1 R1 #160 
-RR             : 0008 mul R13 R1 R1 
+RR             : 0008 mul R13 R1 R1          // should not stall here 
 IA             : 0012 ld R6 #10680 
 ID             : 0016 div R14 R13 #16 
 IF             : 0020 add R9 R1 R14 
@@ -43,7 +43,7 @@ Clock Cycle #: 7
 DIV            : 0000 set R1 #452
 MUL            : 0004 sub R1 R1 #160 
 ADD            : 0008 mul R13 R1 R1 
-RR             : 0012 ld R6 #10680 
+RR             : 0012 ld R6 #10680
 IA             : 0016 div R14 R13 #16 
 ID             : 0020 add R9 R1 R14 
 IF             : 0024 add R6 R9 R9 
@@ -97,7 +97,7 @@ IF             : 0032 ld R2 #52812
 ================================
 Clock Cycle #: 12
 --------------------------------
-WB             : 0004 sub R1 R1 #160 
+WB             : 0004 sub R1 R1 #160        // R1 value is wrong because of forwarding err
 MEM2           : 0008 mul R13 R1 R1 
 MEM1           : 0012 ld R6 #10680 
 BR             : 0016 div R14 R13 #16 
@@ -152,7 +152,7 @@ Clock Cycle #: 18
 --------------------------------
 MUL            : 0020 add R9 R1 R14 
 ADD            : 0024 add R6 R9 R9 
-RR             : 0028 div R1 R6 R9 
+RR             : 0028 div R1 R6 R9      // should stall here because mul stage has add and can't forward R9
 IA             : 0032 ld R2 #52812 
 ID             : 0036 add R8 R1 #236 
 IF             : 0040 sub R11 R1 #120 
@@ -161,7 +161,7 @@ Clock Cycle #: 19
 --------------------------------
 DIV            : 0020 add R9 R1 R14 
 MUL            : 0024 add R6 R9 R9 
-RR             : 0028 div R1 R6 R9 
+RR             : 0028 div R1 R6 R9      
 IA             : 0032 ld R2 #52812 
 ID             : 0036 add R8 R1 #236 
 IF             : 0040 sub R11 R1 #120 
@@ -458,7 +458,7 @@ BR             : 0076 add R7 R6 R1
 DIV            : 0080 ld R3 R9 
 MUL            : 0084 div R7 R2 #84 
 ADD            : 0088 ld R8 #11828 
-RR             : 0092 add R0 R9 R8 
+RR             : 0092 add R0 R9 R8      // should stall
 IA             : 0096 ld R14 #5564 
 ID             : 0100 sub R12 R8 R14 
 IF             : 0104 add R6 R6 #220 
@@ -604,7 +604,7 @@ IF             : 0112 add R13 R5 R5
 ================================
 Clock Cycle #: 63
 --------------------------------
-RR             : 0100 sub R12 R8 R14 
+RR             : 0100 sub R12 R8 R14            // right until here // continue from here
 IA             : 0104 add R6 R6 #220 
 ID             : 0108 mul R13 R13 #32 
 IF             : 0112 add R13 R5 R5 
@@ -827,7 +827,7 @@ MEM1           : 0148 sub R13 R6 #152
 BR             : 0152 sub R12 R14 #32 
 DIV            : 0156 mul R4 R1 R14 
 MUL            : 0160 set R11 #8764
-ADD            : 0164 ld R6 R11 
+ADD            : 0164 ld R6 R11             R11 value should have been set by forwarding
 RR             : 0168 add R4 R6 R6 
 IA             : 0172 ld R12 #22436 
 ID             : 0176 add R1 R1 R12 
@@ -841,7 +841,7 @@ MEM1           : 0152 sub R12 R14 #32
 BR             : 0156 mul R4 R1 R14 
 DIV            : 0160 set R11 #8764
 MUL            : 0164 ld R6 R11 
-RR             : 0168 add R4 R6 R6 
+RR             : 0168 add R4 R6 R6      // should stall here
 IA             : 0172 ld R12 #22436 
 ID             : 0176 add R1 R1 R12 
 IF             : 0180 mul R10 R12 #56 

@@ -381,83 +381,102 @@ int register_read(CPU *cpu) {
         printf("***%s %s\n", prev_id_struct_ia.operand_2, curr_id_struct_div.register_addr);
         printf("***%s\n", curr_id_struct_div.instruction);
 
+        // stall if the register addr is same as operand 1 or 2 in add stage and the instruction is not add
         if (strcmp(curr_id_struct_rr.opcode, "st") != 0) {
             
             if (strlen(prev_id_struct_rr.instruction) && strcmp(prev_id_struct_rr.opcode, "st") != 0) {
 
-                
-                printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
-                printf("prev_id_struct_rr %s\n", prev_id_struct_rr.instruction);
-                // stall if the register addr is same as operand 1 or 2 in add stage and the instruction is not add
-                if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, prev_id_struct_rr.register_addr) == 0) {
-                    local_stall = true;
-                }
-                printf("#### 00 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, prev_id_struct_rr.register_addr) == 0) {
-                    local_stall = true;
-                }
-                printf("strcmp(prev_id_struct_rr.opcode, add) != 0 | %d\n", (strcmp(prev_id_struct_rr.opcode, "set") != 0));
-                if (local_stall && (strcmp(prev_id_struct_rr.opcode, "add") != 0 && strcmp(prev_id_struct_rr.opcode, "sub") != 0 && strcmp(prev_id_struct_rr.opcode, "set") != 0)) {
-                    local_stall = true;
-                    stall = true;
-                }
-                else {
-                    local_stall = false;
+                if (strcmp(prev_id_struct_rr.opcode, "add") != 0 && strcmp(prev_id_struct_rr.opcode, "sub") != 0 && strcmp(prev_id_struct_rr.opcode, "set") != 0) {
+
+                    printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
+                    printf("prev_id_struct_rr %s\n", prev_id_struct_rr.instruction);
+                    if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, prev_id_struct_rr.register_addr) == 0) {
+                        local_stall = true;
+                    }
+                    printf("#### 00 local stall %d\n", local_stall);
+                    if (strcmp(curr_id_struct_rr.operand_1, prev_id_struct_rr.register_addr) == 0) {
+                        local_stall = true;
+                    }
+                    printf("strcmp(prev_id_struct_rr.opcode, add) != 0 | %d\n", (strcmp(prev_id_struct_rr.opcode, "set") != 0));
+                    // if (local_stall && (strcmp(prev_id_struct_rr.opcode, "add") != 0 && strcmp(prev_id_struct_rr.opcode, "sub") != 0 && strcmp(prev_id_struct_rr.opcode, "set") != 0)) {
+                    //     local_stall = true;
+                    //     stall = true;
+                    // }
+                    // else {
+                    //     local_stall = false;
+                    // }
                 }
                 printf("#### 10 local stall %d\n", local_stall);
             }
             
-            printf("prev_id_struct_rr %s\n", prev_id_struct_rr.instruction);
-            printf("curr_id_struct_add %s\n", curr_id_struct_add.instruction);
+            // stall if the register addr is same as operand 1 or 2 in mul stage
+            printf("\nprev_id_struct_rr %s %d\n", prev_id_struct_rr.instruction, prev_id_struct_rr.dependency);
+            printf("curr_id_struct_rr %s %d\n", curr_id_struct_rr.instruction, curr_id_struct_rr.dependency);
+            printf("prev_id_struct_add %s %d\n\n", prev_id_struct_add.instruction, prev_id_struct_add.dependency);
+            printf("curr_id_struct_add %s %d\n", curr_id_struct_add.instruction, curr_id_struct_add.dependency);
+            printf("------------------ %d\n", (strlen(prev_id_struct_rr.instruction) == 0 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1) == 0));
+            printf("++++++++++++++++++ %d\n", (strlen(prev_id_struct_rr.instruction) == 0 && strcmp(curr_id_struct_add.opcode, "mul") != 0));
+
             if (strlen(curr_id_struct_add.instruction) && strcmp(curr_id_struct_add.opcode, "st") != 0) {
 
-                // stall if the register addr is same as operand 1 or 2 in mul stage
-                if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_add.register_addr) == 0) {
-                    stall = true;
-                    local_stall = true;
-                }
-                printf("#### 01 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_add.register_addr) == 0) {
-                    stall = true;
-                    local_stall = true;
-                }
+                if ((prev_id_struct_rr.dependency == 1 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1) == 0) || (prev_id_struct_rr.dependency == 1 && strcmp(curr_id_struct_add.opcode, "mul") != 0)
+                || (strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1) && strcmp(curr_id_struct_add.opcode, "mul"))) { 
 
-                if (local_stall && strcmp(curr_id_struct_add.opcode, "mul")) {      // RIGHT UNTIL HERE,    // Donot remove this line
-                    local_stall = true;
-                    stall = true;
+                    if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_add.register_addr) == 0) {
+                        stall = true;
+                        local_stall = true;
+                    }
+                    printf("#### 01 local stall %d\n", local_stall);
+                    if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_add.register_addr) == 0) {
+                        stall = true;
+                        local_stall = true;
+                    }
+
+                    // if (local_stall && (strcmp(curr_id_struct_add.opcode, "mul") || strlen(prev_id_struct_rr.instruction) == 0)
+                    // && (strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1))) {      // RIGHT UNTIL HERE,    // Donot remove this line
+                    //     local_stall = true;
+                    //     stall = true;
+                    // }
+                    // else {
+                    //     local_stall = false;
+                    // }
+                    printf("#### 11 local stall %d\n", local_stall);
                 }
-                else {
-                    local_stall = false;
-                }
-                printf("#### 11 local stall %d\n", local_stall);
             }
 
+            // stall if the register addr is same as operand 1 or 2 in div stage
             if (strlen(curr_id_struct_mul.instruction) && strcmp(curr_id_struct_mul.opcode, "st") != 0) {
 
-                // stall if the register addr is same as operand 1 or 2 in div stage
-                if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_mul.register_addr) == 0) {
-                    stall = true;
-                    local_stall = true;
-                }
-                printf("#### 02 local stall %d\n", local_stall);
-                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mul.register_addr) == 0) {
-                    stall = true;
-                    local_stall = true;
-                }
+                if ((prev_id_struct_rr.dependency == 1 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1) == 0) || (prev_id_struct_rr.dependency == 1 && strcmp(curr_id_struct_mul.opcode, "div") != 0 )
+                || (strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1) && strcmp(curr_id_struct_mul.opcode, "div"))) {
 
-                if (local_stall && strcmp(curr_id_struct_mul.opcode, "div")) {
-                    local_stall = true;
-                    stall = true;
+                    if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_mul.register_addr) == 0) {
+                        stall = true;
+                        local_stall = true;
+                    }
+                    printf("#### 02 local stall %d\n", local_stall);
+                    if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_mul.register_addr) == 0) {
+                        stall = true;
+                        local_stall = true;
+                    }
+                    
+                    printf("+++++++++++++++prev_id_struct_rr %s\n", prev_id_struct_rr.instruction);
+
+                    // if (local_stall && (strcmp(curr_id_struct_mul.opcode, "div") || strlen(prev_id_struct_rr.instruction) == 0) 
+                    // && (strcmp(curr_id_struct_rr.operand_2, curr_id_struct_rr.operand_1))) {
+                    //     local_stall = true;
+                    //     stall = true;
+                    // }
+                    // else {
+                    //     local_stall = false;
+                    // }
+                    printf("#### 12 local stall %d\n", local_stall);
                 }
-                else {
-                    local_stall = false;
-                }
-                printf("#### 12 local stall %d\n", local_stall);
             }
 
+            // stall if the register addr is same as operand 1 or 2 in br stage
             if (strlen(curr_id_struct_div.instruction) && strcmp(curr_id_struct_div.opcode, "st") != 0) {
 
-                // stall if the register addr is same as operand 1 or 2 in br stage
                 if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_div.register_addr) == 0) {
                     stall = true;
                     local_stall = true;
@@ -627,6 +646,7 @@ int register_read(CPU *cpu) {
 
         if (!local_stall) {
             curr_id_struct_rr.dependency = false;
+            // prev_id_struct_rr.instruction = "";
         }
         else {
             curr_id_struct_rr.dependency = true;
@@ -671,25 +691,16 @@ int add_stage(CPU *cpu) {
         if (!prev_id_struct_rr.dependency) {
 
             // forwarding implementation
-            
-            printf("add stage***%s\n", curr_id_struct_add.instruction);
-            printf("add stage***%s\n", prev_id_struct_add.instruction);
-            
-            // forwarding from add to add
-            if (strlen(prev_id_struct_add.instruction) && strcmp(prev_id_struct_add.opcode, "st")) {
-                if (strcmp(curr_id_struct_add.operand_1, prev_id_struct_add.register_addr) == 0) {
-                    curr_id_struct_add.value_1 = prev_id_struct_add.wb_value;
-                }
-                if (curr_id_struct_add.num_var == 5 && strcmp(curr_id_struct_add.operand_2, prev_id_struct_add.register_addr) == 0) {
-                    curr_id_struct_add.value_2 = prev_id_struct_add.wb_value;
-                }
-            }
 
+
+            printf("add stage***%s\n", curr_id_struct_add.instruction);
+            printf("prev add stage***%s\n", prev_id_struct_add.instruction);
             // forwarding from mul to add
-            if (strlen(prev_id_struct_add.instruction) && strcmp(prev_id_struct_add.opcode, "st")) {
-                // if (strcmp(prev_id_struct_add.opcode, "mul") == 0) {
-                //     prev_id_struct_add.wb_value = prev_id_struct_add.value_1 * prev_id_struct_add.value_2;
-                // }
+            if (strlen(prev_id_struct_add.instruction) && strcmp(prev_id_struct_add.opcode, "st") && strcmp(prev_id_struct_add.register_addr, curr_id_struct_add.register_addr)) {
+                if (strcmp(prev_id_struct_add.opcode, "mul") == 0) {
+                    prev_id_struct_add.wb_value = prev_id_struct_add.value_1 * prev_id_struct_add.value_2;
+                }
+
                 if (strcmp(curr_id_struct_add.operand_1, prev_id_struct_add.register_addr) == 0) {
                     curr_id_struct_add.value_1 = prev_id_struct_add.wb_value;
                 }
@@ -697,15 +708,17 @@ int add_stage(CPU *cpu) {
                     curr_id_struct_add.value_2 = prev_id_struct_add.wb_value;
                 }
             }
+                printf("$$$$$$$$$$$$$$$$$curr_id_struct_add.value_1 %d\n", curr_id_struct_add.value_1);
+                printf("$$$$$$$$$$$$$$$$$curr_id_struct_add.value_2 %d\n", curr_id_struct_add.value_2);
 
 
                 printf("curr_id_struct_mul.wb_value %d\n", curr_id_struct_mul.wb_value);
                 printf("inst curr_id_struct_mul.instr %s\n", curr_id_struct_mul.instruction);
             // forwarding from div to add
-            if (strlen(curr_id_struct_mul.instruction) && strcmp(curr_id_struct_mul.opcode, "st")) {
-                // if (strcmp(curr_id_struct_mul.opcode, "div") == 0) {
-                //     curr_id_struct_mul.wb_value = curr_id_struct_mul.value_1 / curr_id_struct_mul.value_2;
-                // }
+            if (strlen(curr_id_struct_mul.instruction) && strcmp(curr_id_struct_mul.opcode, "st") && strcmp(curr_id_struct_mul.register_addr, prev_id_struct_add.register_addr)) {
+                if (strcmp(curr_id_struct_mul.opcode, "div") == 0) {
+                    curr_id_struct_mul.wb_value = curr_id_struct_mul.value_1 / curr_id_struct_mul.value_2;
+                }
                 if (strcmp(curr_id_struct_add.operand_1, curr_id_struct_mul.register_addr) == 0) {
                     curr_id_struct_add.value_1 = curr_id_struct_mul.wb_value;
                 }
@@ -754,6 +767,16 @@ int add_stage(CPU *cpu) {
                     }
                 }
                 curr_id_struct_add.wb_value = value;
+            }
+                        
+            // forwarding from add to add
+            if (strlen(curr_id_struct_add.instruction) && strcmp(curr_id_struct_add.opcode, "st")) {
+                if (strcmp(curr_id_struct_rr.operand_1, curr_id_struct_add.register_addr) == 0) {
+                    curr_id_struct_rr.value_1 = curr_id_struct_add.wb_value;
+                }
+                if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.operand_2, curr_id_struct_add.register_addr) == 0) {
+                    curr_id_struct_rr.value_2 = curr_id_struct_add.wb_value;
+                }
             }
         }
         else {
@@ -925,6 +948,7 @@ int divition_stage(CPU *cpu) {
         return 0;
     }
     printf("DIV prev : %s %d %d %d\n", curr_id_struct_div.instruction, curr_id_struct_div.value_1, curr_id_struct_div.value_2, curr_id_struct_div.wb_value);
+    printf("BR prev div stage : %s %d %d %d %d\n", prev_id_struct_div.instruction, prev_id_struct_div.value_1, prev_id_struct_div.value_2, prev_id_struct_div.wb_value, prev_id_struct_div.dependency);
     curr_id_struct_div = prev_id_struct_mul;
 
     if (strlen(prev_id_struct_mul.instruction) != 0) {
@@ -1008,7 +1032,7 @@ int branch(CPU *cpu) {
         return 0;
     }
 
-    printf("BR prev : %s %d %d\n", prev_id_struct_div.instruction, prev_id_struct_div.wb_value, prev_id_struct_div.dependency);
+    printf("BR prev : %s %d %d %d %d\n", prev_id_struct_div.instruction, prev_id_struct_div.value_1, prev_id_struct_div.value_2, prev_id_struct_div.wb_value, prev_id_struct_div.dependency);
     if (strlen(prev_id_struct_div.instruction) != 0 && !prev_id_struct_div.dependency) {
         curr_id_struct_br = prev_id_struct_div;
 
@@ -1022,7 +1046,7 @@ int branch(CPU *cpu) {
     else {
         strcpy(curr_id_struct_br.instruction, "");
     }
-        printf("                                                BR             : %s %d\n", curr_id_struct_br.instruction, curr_id_struct_div.wb_value);
+        printf("                                                BR             : %s %d %d %d\n", curr_id_struct_br.instruction, curr_id_struct_div.value_1, curr_id_struct_div.value_2, curr_id_struct_div.wb_value);
 
     return 0;
 }
@@ -1048,7 +1072,7 @@ int memory_1(CPU *cpu) {
     else {
         strcpy(curr_id_struct_mem1.instruction, "");
     }
-        printf("                                                Mem1           : %s %d\n", curr_id_struct_mem1.instruction, curr_id_struct_mem1.wb_value);
+        printf("                                                Mem1           : %s %d %d %d\n", curr_id_struct_mem1.instruction, curr_id_struct_mem1.value_1, curr_id_struct_mem1.value_2, curr_id_struct_mem1.wb_value);
 
     return 0;
 }
@@ -1085,11 +1109,11 @@ int memory_2(CPU *cpu) {
                 register_address += 1;
                 addr = atoi(register_address);
                 // if (!((cpu->regs[addr]).is_writing)) {
-                int idx = (cpu->regs[addr].value)/4;
+                int idx = (curr_id_struct_mem2.value_1)/4;
                 value = memory_map[idx];
-                printf("\n^^^^^^^^^^^^^value %d %d %d %d\n", cpu->regs[addr].value, (cpu->regs[addr].value)/4, idx, value);
+                printf("\n^^^^^^^^^^^^^value %d %d %d %d\n", curr_id_struct_mem2.value_1, (curr_id_struct_mem2.value_1)/4, idx, value);
                 // }
-                printf("@@@@@@@@@@@@@@@@@@@@@@%d %d %d\n", memory_map[1509], memory_map[1510], memory_map[1511]);
+                printf("@@@@@@@@@@@@@@@@@@@@@@%d %d %d\n", memory_map[2191], memory_map[2192], memory_map[2193]);
             }
             curr_id_struct_mem2.wb_value = value;
         }
@@ -1099,7 +1123,7 @@ int memory_2(CPU *cpu) {
 
             addr = atoi(register_number);
             if (!((cpu->regs[addr]).is_writing)) {
-                value = cpu->regs[addr].value;    //get value from Register in operand1
+                value = curr_id_struct_mem2.value_1;    //get value from Register in operand1
             }
             curr_id_struct_mem2.wb_value = value;
         }
@@ -1113,7 +1137,7 @@ int memory_2(CPU *cpu) {
     else {
         strcpy(curr_id_struct_mem2.instruction, "");
     }
-        printf("                                                Mem2           : %s %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.wb_value);
+        printf("                                                Mem2           : %s %d %d %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.value_1, curr_id_struct_mem2.value_2, curr_id_struct_mem2.wb_value);
 
     return 0;
 }

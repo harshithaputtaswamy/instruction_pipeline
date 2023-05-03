@@ -2,16 +2,16 @@
 0004 set R1 #1000
 0008 set R2 #7000
 0012 set R3 #0
-0016 sub R4, R1, R0
-0020 bltz R4, #0060
-0024 mul R5, R0, #4
-0028 add R6, R5, R2
-0032 ld R7, R6
-0036 sub R8, R3, R7
-0040 bgtz R8, #0048
-0044 add R3, R7, #0
-0048 add R0, R0, #1
-0052 set R9, #0
-0056 bez R9, #0016
-0060 st R3, #1000
+0016 sub R4 R1 R0
+0020 bltz R4 #0060
+0024 mul R5 R0 #4
+0028 add R6 R5 R2
+0032 ld R7 R6
+0036 sub R8 R3 R7
+0040 bgtz R8 #0048
+0044 add R3 R7 #0
+0048 add R0 R0 #1
+0052 set R9 #0
+0056 bez R9 #0016
+0060 st R3 #1000
 0064 ret

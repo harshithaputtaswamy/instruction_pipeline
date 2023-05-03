@@ -13,16 +13,30 @@ typedef struct Register {
                      // False: register is ready
 } Register;
 
+
+typedef struct BTB {
+    int tag;
+    int target;
+} BTB;
+
+
+typedef struct PredictionTable {
+    int pattern;
+} PredictionTable;
+
 /* Model of CPU */
 typedef struct CPU {
     /* Integer register file */
     Register *regs;
+    BTB *btb;
+    PredictionTable *predict_tb;
     int clock_cycle;
 } CPU;
 
 typedef struct decoded_instruction {
     char instruction[MAX_INSTRUCTION_LENGTH];
-    char opcode[4];
+    int addr;
+    char opcode[5];
     char register_addr[6];
     char operand_1[6];
     char operand_2[6];
@@ -40,6 +54,10 @@ CPU *CPU_init();
 Register *
 create_registers(int size);
 
+BTB *create_btb(int size);
+
+PredictionTable *create_predict_tb(int size);
+
 int CPU_run(CPU *cpu, char *);
 
 void CPU_stop(CPU *cpu);
@@ -50,9 +68,9 @@ int read_instruction_file(char*);
 
 int write_memory_map(char*);
 
-int instrcution_fetch();
+int instrcution_fetch(CPU *cpu);
 
-int instrcution_decode();
+int instrcution_decode(CPU *cpu);
 
 int instrcution_analyze(CPU *cpu);
 

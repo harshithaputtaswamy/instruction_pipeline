@@ -6,11 +6,16 @@
 #define MAX_INSTRUCTION_LENGTH 500
 #define MAX_INSTRUCTION_COUNT 1000
 
+#define ROB_SIZE 8
+#define RS_SIZE 4
+
 typedef struct Register {
     int value;       // contains register value
     bool is_writing; // indicate that the register is current being written
                      // True: register is not ready
                      // False: register is ready
+    int is_valid; 
+    int tag;
 } Register;
 
 
@@ -49,6 +54,35 @@ typedef struct decoded_instruction {
 } decoded_instruction;
 
 
+/* Reservation station queue structure declarations */
+
+typedef struct rs_queue_struct {
+    decoded_instruction instructions[RS_SIZE];
+    int front;
+    int rear;
+} rs_queue_struct;
+
+/* end of Reservation station queue structure declarations */
+
+
+/* ROB structure declation */
+
+typedef struct rob_struct {
+    int dest;
+    int result;
+    int e;
+    int completed;
+} rob_struct;
+
+typedef struct rob_queue_struct {
+    struct rob_struct buffer[ROB_SIZE];
+    int front;
+    int rear;
+} rob_queue_struct;
+
+/* end of ROB structure declation */
+
+
 CPU *CPU_init();
 
 Register *
@@ -68,13 +102,15 @@ int read_instruction_file(char*);
 
 int write_memory_map(char*);
 
-int instrcution_fetch(CPU *cpu);
+int instruction_fetch(CPU *cpu);
 
-int instrcution_decode(CPU *cpu);
+int instruction_decode(CPU *cpu);
 
-int instrcution_analyze(CPU *cpu);
+int instruction_analyze(CPU *cpu);
 
 int register_read(CPU *cpu);
+
+int instruction_issue(CPU *cpu);
 
 int add_stage(CPU *cpu);
 

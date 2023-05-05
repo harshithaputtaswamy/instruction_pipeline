@@ -23,14 +23,116 @@ int squash_instrutions = 0;
 
 bool stall = false;
 bool break_loop = false;
-int front, rear;
+
+struct rs_queue_struct rs_queue;
+struct rob_queue_struct rob_queue;
 
 
-decoded_instruction curr_id_struct_if, curr_id_struct_decode, curr_id_struct_ia, curr_id_struct_rr, curr_id_struct_add, curr_id_struct_mul, curr_id_struct_div, 
+decoded_instruction curr_id_struct_if, curr_id_struct_decode, curr_id_struct_ia, curr_id_struct_rr, curr_id_struct_is, curr_id_struct_add, curr_id_struct_mul, curr_id_struct_div, 
 	curr_id_struct_br, curr_id_struct_mem1, curr_id_struct_mem2, curr_id_struct_wb;
-decoded_instruction prev_id_struct_if, prev_id_struct_decode, prev_id_struct_ia, prev_id_struct_rr, prev_id_struct_add, prev_id_struct_mul, prev_id_struct_div, 
+decoded_instruction prev_id_struct_if, prev_id_struct_decode, prev_id_struct_ia, prev_id_struct_rr, prev_id_struct_is, prev_id_struct_add, prev_id_struct_mul, prev_id_struct_div, 
 	prev_id_struct_br, prev_id_struct_mem1, prev_id_struct_mem2, prev_id_struct_wb;
 decoded_instruction empty_instruction;
+
+
+/* rob circular queue implementation */
+void rob_queue_init() {
+    rob_struct default_rob = {-1, -1, 0, 0};
+    for (int i = 0; i < ROB_SIZE; i++) {
+        rob_queue.buffer[i].dest =  -1;
+        rob_queue.buffer[i].result = -1;
+        rob_queue.buffer[i].e = 0;
+        rob_queue.buffer[i].completed = 0;
+    }
+}
+
+int rob_queue_full() {
+    int next_rear = (rob_queue.rear + 1) % ROB_SIZE; // calculate next rear index
+    if (next_rear == rob_queue.front) { // check if queue is full
+        printf("Error: Queue is full\n");
+        return 1;
+    }
+    return 0;
+}
+
+int rob_queue_empty() {
+    if (rob_queue.front == rob_queue.rear) { // check if queue is empty
+        printf("Error: Queue is empty\n");
+        return 1;
+    }
+    return 0;
+}
+
+void rob_enqueue(rob_struct rob_data) {
+    int next_rear = (rob_queue.rear + 1) % ROB_SIZE; // calculate next rear index
+    if (rob_queue_full() == 0) { // check if queue is full
+        rob_queue.buffer[rob_queue.rear] = rob_data;
+        rob_queue.rear = next_rear;    
+    }
+}
+
+void rob_dequeue() {
+    if (rob_queue_empty() == 0) { // check if queue is empty
+        rob_queue.front = (rob_queue.front + 1) % ROB_SIZE; // calculate next front index
+    }
+}
+
+void rob_display() {
+    for (int i = 0; i < ROB_SIZE; i++) {
+        printf("|ROB%d [dest: %d, result: %d, (e: %d, completed: %d)]|\n", i, rob_queue.buffer[i].dest, rob_queue.buffer[i].result, rob_queue.buffer[i].e, rob_queue.buffer[i].completed);
+    }
+    printf("\n");
+}
+/* end of ROB queue implementation */
+
+
+/* reservation station queue implementation */
+
+int rs_queue_full() {
+    int next_rear = (rs_queue.rear + 1) % RS_SIZE; // calculate next rear index
+    if (next_rear == rs_queue.front) { // check if queue is full
+        printf("Error: Queue is full\n");
+        return 1;
+    }
+    return 0;
+}
+
+int rs_queue_empty() {
+    if (rs_queue.front == rs_queue.rear) { // check if queue is empty
+        printf("Error: Queue is empty\n");
+        return 1;
+    }
+    return 0;
+}
+
+void rs_enqueue(decoded_instruction instruction) {
+    int next_rear = (rs_queue.rear + 1) % RS_SIZE; // calculate next rear index
+    if (rs_queue_full() == 0) { // check if queue is full
+        rs_queue.instructions[rs_queue.rear] = instruction;
+        rs_queue.rear = next_rear;    
+    }
+}
+
+void rs_dequeue() {
+    if (rs_queue_empty() == 0) { // check if queue is empty
+        rs_queue.front = (rs_queue.front + 1) % RS_SIZE; // calculate next front index
+    }
+}
+
+void rs_display() {
+  printf("RS Queue contents: ");
+  if (rs_queue.front == rs_queue.rear) {
+    printf("empty\n");
+  } else {
+    int i = rs_queue.front;
+    while (i != rs_queue.rear) {
+      printf("%d %s (%d) \n", rs_queue.instructions[i].addr, rs_queue.instructions[i].instruction, rs_queue.instructions[i].value_1);
+      i = (i + 1) % (RS_SIZE + 1); // move to the next index, wrapping around
+    }
+    printf("\n");
+  }
+}
+/* end of reservation station queue implementation */
 
 
 CPU *CPU_init() {
@@ -48,9 +150,10 @@ CPU *CPU_init() {
 	/* Create prediction table */
 	cpu->predict_tb = create_predict_tb(BTB_SIZE);
 
-	front = rear = -1;
+    rob_queue_init();
 	return cpu;
 }
+
 
 /*
  * This function de-allocates CPU cpu.
@@ -74,6 +177,14 @@ print_registers(CPU *cpu){
 		printf("--------------------------------\n");
 	}
 	printf("================================\n\n");
+}
+
+void print_registers_test(CPU *cpu, int cycle) {
+	for (int reg=0; reg<REG_COUNT; reg++) {
+        printf("------------ STATE OF ARCHITECTURAL REGISTER FILE ----------\n");
+        printf("R# [(status 0=invalid, 1=valid), tag, value]\n");
+        printf("R%d [(%d), %d, %d]\n", reg, cpu->regs[reg].is_valid, cpu->regs[reg].tag, cpu->regs[reg].value);
+    }
 }
 
 
@@ -120,10 +231,11 @@ int CPU_run(CPU *cpu, char* filename) {
 		printf("Clock Cycle #: %d\n", cpu->clock_cycle);
 		printf("--------------------------------\n");
 
-		instrcution_fetch(cpu);
-		instrcution_decode(cpu);
-		instrcution_analyze(cpu);
+		instruction_fetch(cpu);
+		instruction_decode(cpu);
+		instruction_analyze(cpu);
 		register_read(cpu);
+        instruction_issue(cpu);
 		add_stage(cpu);
 		multiplier_stage(cpu);
 		divition_stage(cpu);
@@ -134,6 +246,12 @@ int CPU_run(CPU *cpu, char* filename) {
 
 		// print_btb_tb(cpu, cpu->clock_cycle);
 		print_display(cpu, cpu->clock_cycle);
+        // print_registers_test(cpu, cpu->clock_cycle);
+        // printf("------------ Reserve Station ----------\n");
+        // rs_display();
+        // printf("------------ Reorder Buffer----------\n");
+        // rob_display();
+
 		if (break_loop) {
 			break;
 		}
@@ -159,7 +277,9 @@ create_registers(int size) {
 	}
 	for (int i = 0; i < size; i++) {
 		regs[i].value = 0;
-		regs[i].is_writing = false;
+        regs[i].is_writing = false;
+        regs[i].tag = 0;
+		regs[i].is_valid = 0;
 	}
 	return regs;
 }
@@ -261,44 +381,47 @@ int write_memory_map(char* filename) {
 }
 
 
-int instrcution_fetch(CPU *cpu) {
+int instruction_fetch(CPU *cpu) {
 	prev_id_struct_if = curr_id_struct_if;
 
-	//TODO: Check for branch instruction and prediction table 
-	//      if patter >= 4 update program_counter to btb table and prediction table value i.e, to the instruction if branch was taken
-	//      else prgram_counter gets incremented normally
 	if (squash_instrutions) {
 		prev_id_struct_if = empty_instruction;
 		stall = false;
 	}
 
-	// if (program_counter < instruction_count) {
-		if (!stall) {
-			strcpy(curr_id_struct_if.instruction, instruction_set[program_counter]);
+    // structural hazard - if reservation station queue is full then stall if stage
+	if (rs_queue_full() || rob_queue_full()) {
+        stall = true;
+	}
+    printf("Stall %d\n", stall);
+    printf("rs_queue_full %d\n", rs_queue_full());
 
-			if (strstr(instruction_set[program_counter], "bez") || strstr(instruction_set[program_counter], "blez") || strstr(instruction_set[program_counter], "bltz") || 
-			strstr(instruction_set[program_counter], "bgez") || strstr(instruction_set[program_counter], "bgtz") || strstr(instruction_set[program_counter], "bez")) {
-				if (cpu->predict_tb[program_counter % BTB_SIZE].pattern >= 4) {
-					program_counter = cpu->btb[program_counter % BTB_SIZE].target;
-				}
-				else {
-					program_counter++;
-				}
-			}
-			else {
-				program_counter++;
-			}
-		}
-		else {
-			strcpy(curr_id_struct_if.instruction, prev_id_struct_if.instruction);
-		}
-	// }
+    if (!stall) {
+        strcpy(curr_id_struct_if.instruction, instruction_set[program_counter]);
+
+        if (strstr(instruction_set[program_counter], "bez") || strstr(instruction_set[program_counter], "blez") || strstr(instruction_set[program_counter], "bltz") || 
+        strstr(instruction_set[program_counter], "bgez") || strstr(instruction_set[program_counter], "bgtz") || strstr(instruction_set[program_counter], "bez")) {
+            if (cpu->predict_tb[program_counter % BTB_SIZE].pattern >= 4) {
+                program_counter = cpu->btb[program_counter % BTB_SIZE].target;
+            }
+            else {
+                program_counter++;
+            }
+        }
+        else {
+            program_counter++;
+        }
+    }
+    else {
+        strcpy(curr_id_struct_if.instruction, prev_id_struct_if.instruction);
+    }
+	printf("                                       IF             : %s %s %s %s\n", curr_id_struct_if.instruction, curr_id_struct_if.opcode, curr_id_struct_if.operand_1, curr_id_struct_if.operand_2);
 
 	return 0;
 }
 
 
-int instrcution_decode(CPU *cpu) {
+int instruction_decode(CPU *cpu) {
 	char instruction[MAX_INSTRUCTION_LENGTH];
 	char *decoded_instruction[5];
 	char *tokenised = NULL;
@@ -342,13 +465,13 @@ int instrcution_decode(CPU *cpu) {
 
 	}
 
-	// printf("                                       ID             : %s %s %s %s\n", curr_id_struct_decode.instruction, curr_id_struct_decode.opcode, curr_id_struct_decode.operand_1, curr_id_struct_decode.operand_2);
+	printf("                                       ID             : %s %s %s %s\n", curr_id_struct_decode.instruction, curr_id_struct_decode.opcode, curr_id_struct_decode.operand_1, curr_id_struct_decode.operand_2);
 
 	return 0;
 }
 
 
-int instrcution_analyze(CPU *cpu) {
+int instruction_analyze(CPU *cpu) {
 	bool local_stall = false;
 	int addr;
 	char *register_address;
@@ -372,7 +495,7 @@ int instrcution_analyze(CPU *cpu) {
 			cpu->regs[addr].is_writing = true;      // set register addr is_writing to true for instruction in br stage
 		}
 	}
-	// printf("                                       IA             : %s %d\n", curr_id_struct_ia.instruction, curr_id_struct_ia.dependency);
+	printf("                                       IA             : %s %d\n", curr_id_struct_ia.instruction, curr_id_struct_ia.dependency);
 
 	return 0;
 }
@@ -418,7 +541,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 1: %d\n", local_stall);
+			printf("local stall 1: %d\n", local_stall);
 			
 			// stall if the register addr is same as operand 1 or 2 in mul stage and instruction is not mul
 			if (strlen(curr_id_struct_add.instruction) && strcmp(curr_id_struct_add.opcode, "st") != 0) {
@@ -441,7 +564,7 @@ int register_read(CPU *cpu) {
 								stall = true;
 								local_stall = true;
 							}
-							// printf("local stall 2: %d\n", local_stall);
+							printf("local stall 2: %d\n", local_stall);
 							
 						}
 					}
@@ -472,7 +595,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 3: %d\n", local_stall);
+			printf("local stall 3: %d\n", local_stall);
 
 
 			// stall if the register addr is same as operand 1 or 2 in br stage
@@ -496,7 +619,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 4: %d\n", local_stall);
+			printf("local stall 4: %d\n", local_stall);
 
 			if (strlen(curr_id_struct_br.instruction) && strcmp(curr_id_struct_br.opcode, "st") != 0) {
 				
@@ -518,7 +641,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 5: %d\n", local_stall);
+			printf("local stall 5: %d\n", local_stall);
 
 			if (strlen(curr_id_struct_mem1.instruction) && strcmp(curr_id_struct_mem1.opcode, "st") != 0) {
 				
@@ -540,7 +663,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 6: %d\n", local_stall);
+			printf("local stall 6: %d\n", local_stall);
 
 			if (strlen(curr_id_struct_mem2.instruction) && strcmp(curr_id_struct_mem2.opcode, "st") != 0) {
 				// if instruction in wb is branch instruction don't stall
@@ -563,7 +686,7 @@ int register_read(CPU *cpu) {
 					}
 				}
 			}
-			// printf("local stall 7: %d\n", local_stall);
+			printf("local stall 7: %d\n", local_stall);
 
 		if (strcmp(curr_id_struct_rr.opcode, "ret") != 0) {
 
@@ -618,11 +741,14 @@ int register_read(CPU *cpu) {
 			}
 		}
 	}
-	// printf("                                       RR             : %s %d %d %d\n", curr_id_struct_rr.instruction, curr_id_struct_rr.dependency, curr_id_struct_rr.value_1, curr_id_struct_rr.value_2);
+	printf("                                       RR             : %s %d %d %d\n", curr_id_struct_rr.instruction, curr_id_struct_rr.dependency, curr_id_struct_rr.value_1, curr_id_struct_rr.value_2);
 	
 	return 0;
 }
 
+int instruction_issue(CPU *cpu) {
+    return 0;
+}
 
 int add_stage(CPU *cpu) {
 	int addr;
@@ -659,9 +785,7 @@ int add_stage(CPU *cpu) {
 				else {
 					register_address += 1;
 					addr = atoi(register_address);
-					if (!cpu->regs[addr].is_writing) {
-						value = cpu->regs[addr].value;
-					}
+                    value = cpu->regs[addr].value;
 				}
 				curr_id_struct_add.wb_value = value;
 			}
@@ -696,7 +820,7 @@ int add_stage(CPU *cpu) {
 			curr_id_struct_add.dependency = true;
 		}
 	}
-	// printf("                                       ADD            : %s %d %d %d %d\n", curr_id_struct_add.instruction, curr_id_struct_add.dependency, curr_id_struct_add.value_1, curr_id_struct_add.value_2, curr_id_struct_add.wb_value);
+	printf("                                       ADD            : %s %d %d %d %d\n", curr_id_struct_add.instruction, curr_id_struct_add.dependency, curr_id_struct_add.value_1, curr_id_struct_add.value_2, curr_id_struct_add.wb_value);
 
 	return 0;
 }
@@ -762,7 +886,7 @@ int multiplier_stage(CPU *cpu) {
 			curr_id_struct_mul.dependency = true;
 		}
 	}
-	// printf("                                       MUL            : %s %d %d %d\n", curr_id_struct_mul.instruction, curr_id_struct_mul.value_1, curr_id_struct_mul.value_2, curr_id_struct_mul.wb_value);
+	printf("                                       MUL            : %s %d %d %d\n", curr_id_struct_mul.instruction, curr_id_struct_mul.value_1, curr_id_struct_mul.value_2, curr_id_struct_mul.wb_value);
 
 	return 0;
 }
@@ -840,7 +964,8 @@ int divition_stage(CPU *cpu) {
 			curr_id_struct_div.dependency = true;
 		}
 	}
-	// printf("                                       DIV            : %s %d %d %d %d\n", curr_id_struct_div.instruction, curr_id_struct_div.value_1, curr_id_struct_div.value_2, curr_id_struct_div.wb_value, curr_id_struct_div.dependency);
+    printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
+	printf("                                       DIV            : %s %d %d %d %d\n", curr_id_struct_div.instruction, curr_id_struct_div.value_1, curr_id_struct_div.value_2, curr_id_struct_div.wb_value, curr_id_struct_div.dependency);
 
 	return 0;
 }
@@ -938,7 +1063,7 @@ int branch(CPU *cpu) {
 	else {
 		strcpy(curr_id_struct_br.instruction, "");
 	}
-	// printf("                                       BR             : %s %d %d %d\n", curr_id_struct_br.instruction, curr_id_struct_br.value_1, curr_id_struct_br.value_2, curr_id_struct_br.wb_value);
+	printf("                                       BR             : %s %d %d %d\n", curr_id_struct_br.instruction, curr_id_struct_br.value_1, curr_id_struct_br.value_2, curr_id_struct_br.wb_value);
 
 	return 0;
 }
@@ -959,7 +1084,7 @@ int memory_1(CPU *cpu) {
 	else {
 		strcpy(curr_id_struct_mem1.instruction, "");
 	}
-	// printf("                                       Mem1           : %s %d %d %d\n", curr_id_struct_mem1.instruction, curr_id_struct_mem1.value_1, curr_id_struct_mem1.value_2, curr_id_struct_mem1.wb_value);
+	printf("                                       Mem1           : %s %d %d %d\n", curr_id_struct_mem1.instruction, curr_id_struct_mem1.value_1, curr_id_struct_mem1.value_2, curr_id_struct_mem1.wb_value);
 
 	return 0;
 }
@@ -1005,16 +1130,12 @@ int memory_2(CPU *cpu) {
 			register_number += 1;
 
 			addr = atoi(register_number);
-			// if (!((cpu->regs[addr]).is_writing)) {
-			// value = cpu->regs[addr].value;    //get value from Register in operand1
-			// }
-			// curr_id_struct_mem2.wb_value = curr_id_struct_mem2.value_1;
 		}
 	}
 	else {
 		strcpy(curr_id_struct_mem2.instruction, "");
 	}
-	// printf("                                       Mem2           : %s %d %d %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.value_1, curr_id_struct_mem2.value_2, curr_id_struct_mem2.wb_value);
+	printf("                                       Mem2           : %s %d %d %d\n", curr_id_struct_mem2.instruction, curr_id_struct_mem2.value_1, curr_id_struct_mem2.value_2, curr_id_struct_mem2.wb_value);
 
 	return 0;
 }
@@ -1061,10 +1182,10 @@ int write_back(CPU *cpu) {
 	else {
 		strcpy(curr_id_struct_wb.instruction, "");
 	}
-	// printf("                                       WB             : %s %d\n", curr_id_struct_wb.instruction, curr_id_struct_wb.wb_value);
+	printf("                                       WB             : %s %d\n", curr_id_struct_wb.instruction, curr_id_struct_wb.wb_value);
 
 
-	if (cpu->clock_cycle == 500000)
+	if (cpu->clock_cycle == 10)
 		exit(0);
 	return 0;
 }

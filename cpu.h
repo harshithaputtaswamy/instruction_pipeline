@@ -50,7 +50,7 @@ typedef struct decoded_instruction {
     int value_2;
     int wb_value;
     bool dependency;
-
+    int timestamp;
 } decoded_instruction;
 
 
@@ -112,19 +112,23 @@ int register_read(CPU *cpu);
 
 int instruction_issue(CPU *cpu);
 
-int add_stage(CPU *cpu);
+int arithmetic_operation(CPU *cpu);
 
-int multiplier_stage(CPU *cpu);
+decoded_instruction add_stage(CPU *cpu, decoded_instruction instruction);
 
-int divition_stage(CPU *cpu);
+decoded_instruction multiplier_stage(CPU *cpu, decoded_instruction instruction);
 
-int branch(CPU *cpu);
+decoded_instruction division_stage(CPU *cpu, decoded_instruction instruction);
+
+int branch(CPU *cpu, decoded_instruction instruction);
 
 int memory_1(CPU *cpu);
 
-int memory_2(CPU *cpu);
+decoded_instruction memory_2(CPU *cpu, decoded_instruction instruction);
 
 int write_back(CPU *cpu);
+
+int retire_stage(CPU *cpu);
 
 int enqueue(char*);
 

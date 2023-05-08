@@ -120,7 +120,9 @@ decoded_instruction multiplier_stage(CPU *cpu, decoded_instruction instruction);
 
 decoded_instruction division_stage(CPU *cpu, decoded_instruction instruction);
 
-int branch(CPU *cpu, decoded_instruction instruction);
+int branch_with_prediction(CPU *cpu, decoded_instruction instruction);
+
+int branch_without_prediction(CPU *cpu, decoded_instruction instruction);
 
 int memory_1(CPU *cpu);
 

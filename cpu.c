@@ -288,7 +288,7 @@ int CPU_run(CPU *cpu, char* filename) {
 			break;
 		}
         
-        if (cpu->clock_cycle == 15)         // For DEBUG
+        if (cpu->clock_cycle == 40)         // For DEBUG
             exit(0);
 	}
 
@@ -742,7 +742,7 @@ int register_read(CPU *cpu) {
                     stall = true;
                 }
                 else {
-                    branch(cpu, curr_id_struct_rr);
+                    branch_without_prediction(cpu, curr_id_struct_rr);
                 }
             }
         }
@@ -939,15 +939,24 @@ int register_read(CPU *cpu) {
 					}
 				}
 				else {
-					if (strstr(register_address, "ROB")) {
-                        register_address += 3;
-    					addr = rob_queue.buffer[atoi(register_address)].dest;
-                    }
-                    else {
+					// if (strstr(register_address, "ROB")) {
+                    //     register_address += 3;
+    				// 	addr = rob_queue.buffer[atoi(register_address)].dest;
+                    // }
+                    // else {
                         register_address += 1;
     					addr = atoi(register_address);
+                    // }
+                    if (cpu->regs[addr].is_valid) {
+    					values[i - 3] = cpu->regs[addr].value;
                     }
-					values[i - 3] = cpu->regs[addr].value;
+                    else {
+                        for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                            if (rob_queue.buffer[rob_idx].dest == addr) {
+                                values[i - 3] = rob_queue.buffer[rob_idx].result;
+                            }
+                        }
+                    }
 				}
 			}
 		}
@@ -1047,39 +1056,59 @@ int arithmetic_operation(CPU *cpu) {
     for (int i = 0; i < RS_SIZE; i++) {
         if (strlen(prev_id_struct_is[i].instruction) != 0) {
 
+            printf("********************\n");
             strcpy(operands[0], prev_id_struct_is[i].operand_1);
 			strcpy(operands[1], prev_id_struct_is[i].operand_2);
+            printf("%s %s %d %d\n", operands[0], operands[1], prev_id_struct_is[i].value_1, prev_id_struct_is[i].value_2);
 
-			for (int i = 3; i < prev_id_struct_is[i].num_var; i++) {
-				register_address = operands[i - 3];
-
-				if (strstr(operands[i - 3], "#")) {
+			for (int j = 3; j < prev_id_struct_is[i].num_var; j++) {
+                printf("\n^^^^^^^\n");
+				register_address = operands[j - 3];
+                printf("***********register_address %s\n", register_address);
+				if (strstr(operands[j - 3], "#")) {
 					register_address += 1;
 					addr = atoi(register_address);
 					if (addr > 999) {
-						values[i - 3] = memory_map[(addr)/4];   // Read from memory map file
+						values[j - 3] = memory_map[(addr)/4];   // Read from memory map file
 					}
 					else {
-						values[i - 3] = addr;   //use the value given
+						values[j - 3] = addr;   //use the value given
 					}
 				}
 				else {
-					if (strstr(register_address, "ROB")) {
-                        register_address += 3;
-    					addr = rob_queue.buffer[atoi(register_address)].dest;
-                        printf("addr add %d\n", addr);
-                    }
-                    else {
+				// 	if (strstr(register_address, "ROB")) {
+                //         register_address += 3;
+    			// 		addr = rob_queue.buffer[atoi(register_address)].dest;
+                //     }
+                //     else {
                         register_address += 1;
     					addr = atoi(register_address);
+                    // }
+                    printf("addr add %d\n", addr);
+					if (cpu->regs[addr].is_valid) {
+    					values[j - 3] = cpu->regs[addr].value;
+                        // for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                        //     if (rob_queue.buffer[rob_idx].dest == addr) {
+                        //         if(rob_queue.buffer[rob_idx].result != values[j - 3]) {
+                        //             values[j - 3] = rob_queue.buffer[rob_idx].dest;
+                        //         }
+                        //     }
+                        // }
+                        printf("********** should be here\n");
                     }
-					values[i - 3] = cpu->regs[addr].value;
+                    else {
+                        for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                            if (rob_queue.buffer[rob_idx].dest == addr) {
+                                values[j - 3] = rob_queue.buffer[rob_idx].result;
+                            }
+                        }
+                    }
+                    printf("values[j - 3] %d\n", values[j - 3]);
 				}
 			}
             
 			prev_id_struct_is[i].value_1 = values[0];
 			prev_id_struct_is[i].value_2 = values[1];
-
 
             if (strcmp(prev_id_struct_is[i].opcode, "mul") == 0) {
                 if(mul_counter == 2) {
@@ -1146,6 +1175,7 @@ int arithmetic_operation(CPU *cpu) {
                     }
                     continue;
                 }
+                printf("value1 %d value2 %d \n", prev_id_struct_is[i].value_1, prev_id_struct_is[i].value_2);
                 result = add_stage(cpu, prev_id_struct_is[i]);
                 result.timestamp = cpu->clock_cycle;
                 curr_id_struct_arith[i] = result;
@@ -1184,33 +1214,34 @@ decoded_instruction add_stage(CPU *cpu, decoded_instruction add_instruction) {
 
 	// 	if (!prev_id_struct_rr.dependency) {
         
-			if (strcmp(add_instruction.opcode, "add") == 0) {
-				add_instruction.wb_value = add_instruction.value_1 + add_instruction.value_2;
-			}
-			else if (strcmp(add_instruction.opcode, "sub") == 0) {
-				add_instruction.wb_value = add_instruction.value_1 - add_instruction.value_2;
-			}
-			else if (strcmp(add_instruction.opcode, "set") == 0) {
-				register_address = add_instruction.operand_1;
+    if (strcmp(add_instruction.opcode, "add") == 0) {
+        add_instruction.wb_value = add_instruction.value_1 + add_instruction.value_2;
+    }
+    else if (strcmp(add_instruction.opcode, "sub") == 0) {
+        add_instruction.wb_value = add_instruction.value_1 - add_instruction.value_2;
+    }
+    else if (strcmp(add_instruction.opcode, "set") == 0) {
+        register_address = add_instruction.operand_1;
 
-				if (strstr(add_instruction.operand_1, "#")) {
-					register_address += 1;
-					addr = atoi(register_address);
-					value = addr;   //use the value given
-				}
-				else {
-					if (strstr(register_address, "ROB")) {
-                        register_address += 3;
-    					addr = rob_queue.buffer[atoi(register_address)].dest;
-                    }
-                    else {
-                        register_address += 1;
-    					addr = atoi(register_address);
-                    }
-                    value = cpu->regs[addr].value;
-				}
-				add_instruction.wb_value = value;
-			}
+        if (strstr(add_instruction.operand_1, "#")) {
+            register_address += 1;
+            addr = atoi(register_address);
+            value = addr;   //use the value given
+        }
+        else {
+            // if (strstr(register_address, "ROB")) {
+            //     register_address += 3;
+            //     addr = rob_queue.buffer[atoi(register_address)].dest;
+            // }
+            // else {
+                register_address += 1;
+                addr = atoi(register_address);
+            // }
+            value = cpu->regs[addr].value;
+        }
+        add_instruction.wb_value = value;
+    }
+    printf("*****************add value %d\n", value);
 						
 			// forwarding from add to add
             /*
@@ -1400,7 +1431,64 @@ decoded_instruction division_stage(CPU *cpu, decoded_instruction div_instruction
 }
 
 
-int branch(CPU *cpu, decoded_instruction branch_instruction) {
+int branch_without_prediction(CPU *cpu, decoded_instruction branch_instruction) {
+    int value;
+	int branch_taken = 0;
+
+	char *register_addr;
+	char *next_instruction_addr;
+
+    register_addr = branch_instruction.register_addr;
+    register_addr += 1;
+    value = branch_instruction.wb_value;
+
+    if (strcmp(branch_instruction.opcode, "bez") == 0) {            
+        if (value == 0) {
+            branch_taken = 1;
+        }
+    }
+
+    else if (strcmp(branch_instruction.opcode, "blez") == 0) {
+        if (value <= 0) {
+            branch_taken = 1;
+        }
+    }
+
+    else if (strcmp(branch_instruction.opcode, "bltz") == 0) {
+        if (value < 0) {
+            branch_taken = 1;
+        }
+    }
+
+    else if (strcmp(branch_instruction.opcode, "bgez") == 0) {
+        if (value >= 0) {
+            branch_taken = 1;
+            printf("here\n");
+        }
+    }
+
+    else if (strcmp(branch_instruction.opcode, "bgtz") == 0) {
+        if (value > 0) {
+            branch_taken = 1;
+        }
+    }
+
+
+    if (strstr(branch_instruction.operand_1, "#")) {
+        next_instruction_addr = branch_instruction.operand_1;
+        next_instruction_addr += 1;
+    }
+
+    if (branch_taken) {
+        program_counter = atoi(next_instruction_addr)/4;
+        squash_instrutions = 1;
+        stall = 0;
+    }
+    return 0;
+}
+
+
+int branch_with_prediction(CPU *cpu, decoded_instruction branch_instruction) {
 	int value;
 	int branch_taken = 0;
 
@@ -1465,7 +1553,7 @@ int branch(CPU *cpu, decoded_instruction branch_instruction) {
 
 					if (cpu->predict_tb[branch_instruction.addr % BTB_SIZE].pattern < 4) {
 						program_counter = atoi(next_instruction_addr)/4;
-						squash_instrutions = 1;     //TODO: make 1 only if prediction is false
+						squash_instrutions = 1;
 						stall = 0;
 					}
 
@@ -1593,28 +1681,56 @@ int write_back(CPU *cpu) {
         printf("curr_id_struct_wb[j].instruction %s\n\n\n", curr_id_struct_wb[j].instruction);
         if (strlen(curr_id_struct_wb[j].instruction)) {
             register_number = curr_id_struct_wb[j].register_addr;
+
             if (strstr(register_number, "ROB")) {
                 register_number += 3;
             }
             else {
                 register_number += 1;
             }
-            printf("addr %d %s\n", addr, curr_id_struct_wb[j].register_addr);
+
             addr = atoi(register_number);
-            printf("rob_queue.front %d rob_queue.rear %d\n", rob_queue.front, rob_queue.rear);
             for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % (ROB_SIZE)) {     // loop through rob buffer and update it
-                printf("i %d\n", i);
+
                 if (i == addr) {
-                    printf("^^^^^^How many times??\n");
                     rob_queue.buffer[i].completed = 1;
-                    rob_queue.buffer[i].result = curr_id_struct_wb[j].wb_value;
+                    rob_queue.buffer[i].result = curr_id_struct_wb[j].wb_value;     // update the register value in ROB buffer
+
+                    // /* Loop through RS queue, check if any operand matches with the write back instruction, update it's value */
+                    // for (int rs_idx = 0; rs_idx < RS_SIZE; rs_idx++) {
+                    //     if (strlen(curr_id_struct_is[rs_idx].instruction)) {
+                    //         printf("curr_id_struct_is[rs_idx].operand_1 %s\n", curr_id_struct_is[rs_idx].instruction);
+                    //         register_number = curr_id_struct_is[rs_idx].operand_1;
+                    //         if (strstr(register_number, "R")) {
+                    //             register_number += 1;
+                    //             addr = atoi(register_number);
+                    //             if (rob_queue.buffer[i].dest == addr) {
+                    //                 curr_id_struct_is[rs_idx].value_1 = rob_queue.buffer[i].result;
+                    //             }
+                    //         }
+                    //         if (curr_id_struct_is[rs_idx].num_var == 5) {
+                    //             register_number = curr_id_struct_is[rs_idx].operand_2;
+                    //             if (strstr(register_number, "R")) {
+                    //                 register_number += 1;
+                    //                 addr = atoi(register_number);
+                    //                 if (rob_queue.buffer[i].dest == addr) {
+                    //                     curr_id_struct_is[rs_idx].value_2 = rob_queue.buffer[i].result;
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+                    // }
+
                     if (strcmp(curr_id_struct_rr.register_addr, curr_id_struct_wb[j].register_addr) == 0) {
                         if (curr_id_struct_rr.dependency) {
                             curr_id_struct_rr.dependency = false;
                             rs_enqueue(curr_id_struct_rr);
+
+                            /* execute the branch instruction that is present in RR stage */
                             if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
                                 strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
-                                branch(cpu, curr_id_struct_rr);
+                                branch_without_prediction(cpu, curr_id_struct_rr);
+
                                 rob_struct rob_data;
                                 rob_data.dest = -1;
                                 rob_data.result = -1;
@@ -1625,7 +1741,6 @@ int write_back(CPU *cpu) {
                         }
                     }
 
-                    // curr_id_struct_wb[j] = curr_id_struct_wb[j];
                 }
 
             }
@@ -1635,7 +1750,6 @@ int write_back(CPU *cpu) {
         }
         printf("\n");
     }
-
 }
 
 
@@ -1706,15 +1820,18 @@ int retire_stage(CPU *cpu) {
                                     register_addr += 3;
                                     // register_addr = rob_queue.buffer[atoi(register_addr)].dest;
                                     cpu->regs[rob_queue.buffer[atoi(register_addr)].dest].value = rob_queue.buffer[i].result;
+                                    cpu->regs[rob_queue.buffer[atoi(register_addr)].dest].is_valid = 1;
                                 }
                                 else {
                                     register_addr += 1;
                                     cpu->regs[atoi(register_addr)].value = rob_queue.buffer[i].result;
+                                    cpu->regs[atoi(register_addr)].is_valid = 1;
                                 }
                                 // cpu->regs[register_addr].is_writing = false;
                             }
                         }
                     }
+                    printf("Firest increment\n");
                     re_dequeue_counter++;
                     fetched_instructions++;
                     re_counter_flag++;
@@ -1722,6 +1839,13 @@ int retire_stage(CPU *cpu) {
                     printf("RE             : %s %d           	| \n", prev_id_struct_wb[j].instruction, prev_id_struct_wb[j].wb_value);
                     break;
                 }
+                
+                /* if it is a branch instruction then dequeue from ROB with default values */
+                if (strstr(prev_id_struct_wb[j].opcode, "bez") || strstr(prev_id_struct_wb[j].opcode, "blez") || strstr(prev_id_struct_wb[j].opcode, "bltz") || 
+                    strstr(prev_id_struct_wb[j].opcode, "bgez") || strstr(prev_id_struct_wb[j].opcode, "bgtz") || strstr(prev_id_struct_wb[j].opcode, "bez")) {
+                    re_dequeue_counter++;
+                }
+                prev_id_struct_wb[j] = empty_instruction;
             }
         }
     }

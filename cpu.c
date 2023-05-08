@@ -288,13 +288,15 @@ int CPU_run(CPU *cpu, char* filename) {
 			break;
 		}
         
-        if (cpu->clock_cycle == 40)         // For DEBUG
+        if (cpu->clock_cycle == 84500)         // For DEBUG
             exit(0);
 	}
 
 	write_memory_map(filename);
 
 	print_registers(cpu);
+    printf("Number of IR stage stalls due to the full reservation station: %d\n", rs_stall);
+    printf("Number of IR stage stalls due to the full reorder buffer: %d\n", rob_stall);
 	printf("Stalled cycles due to data hazard: %d \n", stalled_cycles);
 	printf("Total execution cycles: %d\n", cpu->clock_cycle);
 	printf("Total instruction simulated: %d\n", fetched_instructions);
@@ -558,12 +560,13 @@ int register_read(CPU *cpu) {
 	// }
 
 
-        printf("****stall IR %d\n", stall);
+        printf("****stall IR %d %d\n", stall, curr_id_struct_rr.dependency);
 		if (!curr_id_struct_rr.dependency) {
 			curr_id_struct_rr = prev_id_struct_ia;
-			if (strcmp(prev_id_struct_rr.opcode, "ret") == 0) {
-				return 0;
-			}
+            printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
+			// if (strcmp(prev_id_struct_rr.opcode, "ret") == 0) {
+			// 	return 0;
+			// }
 		}
 	if (strlen(prev_id_struct_ia.instruction) != 0) {
 
@@ -578,15 +581,12 @@ int register_read(CPU *cpu) {
                 register_address += 3;
                 addr = atoi(register_address);
                 for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
-                    printf("addr %d i %d\n", addr, i);
                     if (i == addr) {         // comparing output register address
-                        printf("rob_queue.buffer[i].completed %d\n", rob_queue.buffer[i].completed);
                         if (rob_queue.buffer[i].completed == 0) {
                             strcpy(rename_address, "ROB");
                             sprintf(dest_num, "%d", i);
                             strcat(rename_address, dest_num);
                             strcpy(curr_id_struct_rr.register_addr, rename_address);
-                            printf("*****rename_address %s\n", rename_address);
 
                             register_addr_inuse = true;
                             local_stall = true;
@@ -607,7 +607,6 @@ int register_read(CPU *cpu) {
                             sprintf(dest_num, "%d", i);
                             strcat(rename_address, dest_num);
                             strcpy(curr_id_struct_rr.register_addr, rename_address);
-                            printf("**rename_address else case %s\n", rename_address);
 
                             register_addr_inuse = true;
                             local_stall = true;
@@ -620,7 +619,6 @@ int register_read(CPU *cpu) {
                             sprintf(dest_num, "%d", rob_queue.rear);
                             strcat(rename_address, dest_num);
                             strcpy(curr_id_struct_rr.register_addr, rename_address);
-                            printf("**rename_address else if case**** %s\n", rename_address);
                         }
                 }
                 printf("local stall 2: %d\n", local_stall);
@@ -730,22 +728,6 @@ int register_read(CPU *cpu) {
         */
         /* end of renaming */
 
-
-        /* Branching */
-        if (!local_stall && !curr_id_struct_rr.dependency) {
-            if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
-                strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
-                
-                // stall the cycle if instruction in IR is branch and the register address is present in later stages
-                if (register_addr_inuse) {
-                    local_stall = true;
-                    stall = true;
-                }
-                else {
-                    branch_without_prediction(cpu, curr_id_struct_rr);
-                }
-            }
-        }
         // else {
         //     if (operand_1_inuse || operand_2_inuse) {
         //         local_stall = true;
@@ -949,6 +931,13 @@ int register_read(CPU *cpu) {
                     // }
                     if (cpu->regs[addr].is_valid) {
     					values[i - 3] = cpu->regs[addr].value;
+                        for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                            if (rob_queue.buffer[rob_idx].dest == addr && rob_queue.buffer[rob_idx].completed) {
+                                if(rob_queue.buffer[rob_idx].result != values[i - 3]) {
+                                    values[i - 3] = rob_queue.buffer[rob_idx].result;
+                                }
+                            }
+                        }
                     }
                     else {
                         for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
@@ -960,16 +949,11 @@ int register_read(CPU *cpu) {
 				}
 			}
 		}
+
+
 		if (!local_stall) {
 			curr_id_struct_rr.dependency = false;
             
-            if (rs_queue_full()) {
-                rs_stall++;
-                stall = true;
-            }
-            else {
-                rs_enqueue(curr_id_struct_rr);
-            }
 		}
 		else {
 			curr_id_struct_rr.dependency = true;
@@ -980,6 +964,13 @@ int register_read(CPU *cpu) {
 			stalled_cycles++;
 		}
 		else {
+            if (rs_queue_full()) {
+                rs_stall++;
+                stall = true;
+            }
+            else {
+                rs_enqueue(curr_id_struct_rr);
+            }
 			stall = false;
 			curr_id_struct_rr.value_1 = values[0];
 			curr_id_struct_rr.value_2 = values[1];
@@ -991,8 +982,32 @@ int register_read(CPU *cpu) {
 				register_address++;
 				addr = atoi(register_address);
 				curr_id_struct_rr.wb_value = cpu->regs[addr].value;
+                for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                    if (rob_queue.buffer[rob_idx].dest == addr && rob_queue.buffer[rob_idx].completed) {
+                        if(rob_queue.buffer[rob_idx].result != curr_id_struct_rr.wb_value) {
+                            curr_id_struct_rr.wb_value = rob_queue.buffer[rob_idx].result;
+                        }
+                    }
+                }
 			}
 		}
+
+        /* Branching */
+        if (!local_stall && !curr_id_struct_rr.dependency) {
+            if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
+                strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
+                
+                // stall the cycle if instruction in IR is branch and the register address is present in later stages
+                if (register_addr_inuse) {
+                    local_stall = true;
+                    stall = true;
+                }
+                else {
+                    printf("curr_id_struct_rr %d\n", curr_id_struct_rr.wb_value);
+                    branch_without_prediction(cpu, curr_id_struct_rr);
+                }
+            }
+        }
 	}
 
 
@@ -1087,14 +1102,13 @@ int arithmetic_operation(CPU *cpu) {
                     printf("addr add %d\n", addr);
 					if (cpu->regs[addr].is_valid) {
     					values[j - 3] = cpu->regs[addr].value;
-                        // for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
-                        //     if (rob_queue.buffer[rob_idx].dest == addr) {
-                        //         if(rob_queue.buffer[rob_idx].result != values[j - 3]) {
-                        //             values[j - 3] = rob_queue.buffer[rob_idx].dest;
-                        //         }
-                        //     }
-                        // }
-                        printf("********** should be here\n");
+                        for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
+                            if (rob_queue.buffer[rob_idx].dest == addr && rob_queue.buffer[rob_idx].completed) {
+                                if(rob_queue.buffer[rob_idx].result != values[j - 3]) {
+                                    values[j - 3] = rob_queue.buffer[rob_idx].result;
+                                }
+                            }
+                        }
                     }
                     else {
                         for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
@@ -1729,6 +1743,7 @@ int write_back(CPU *cpu) {
                             /* execute the branch instruction that is present in RR stage */
                             if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
                                 strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
+                                curr_id_struct_rr.wb_value = curr_id_struct_wb[j].wb_value;
                                 branch_without_prediction(cpu, curr_id_struct_rr);
 
                                 rob_struct rob_data;
@@ -1767,6 +1782,9 @@ int retire_stage(CPU *cpu) {
         }
         for (int j = 0; j < RS_SIZE; j++) {     // Loop over write back stage output list
             if (strlen(prev_id_struct_wb[j].instruction)) {
+                if (strcmp(prev_id_struct_wb[j].opcode, "ret") == 0) {
+                    break_loop = true;
+                }
 
                 register_addr = prev_id_struct_wb[j].register_addr;
                 if (strstr(register_addr, "ROB")) {

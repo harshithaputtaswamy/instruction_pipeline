@@ -288,7 +288,7 @@ int CPU_run(CPU *cpu, char* filename) {
 			break;
 		}
         
-        if (cpu->clock_cycle == 84500)         // For DEBUG
+        if (cpu->clock_cycle == 40)         // For DEBUG
             exit(0);
 	}
 
@@ -560,14 +560,14 @@ int register_read(CPU *cpu) {
 	// }
 
 
-        printf("****stall IR %d %d\n", stall, curr_id_struct_rr.dependency);
-		if (!curr_id_struct_rr.dependency) {
-			curr_id_struct_rr = prev_id_struct_ia;
-            printf("curr_id_struct_rr %s\n", curr_id_struct_rr.instruction);
-			// if (strcmp(prev_id_struct_rr.opcode, "ret") == 0) {
-			// 	return 0;
-			// }
-		}
+    printf("****stall IR %d %d\n", stall, curr_id_struct_rr.dependency);
+    if (!stall) {
+        curr_id_struct_rr = prev_id_struct_ia;
+        if (strcmp(curr_id_struct_rr.opcode, "ret") == 0) {
+            squash_instrutions = 1;
+        }
+    }
+
 	if (strlen(prev_id_struct_ia.instruction) != 0) {
 
         /* Renaming registers */
@@ -624,7 +624,6 @@ int register_read(CPU *cpu) {
                 printf("local stall 2: %d\n", local_stall);
 
             }
-            curr_id_struct_rr.timestamp = cpu->clock_cycle;
 
 
             if (!register_addr_inuse) {
@@ -950,7 +949,7 @@ int register_read(CPU *cpu) {
 			}
 		}
 
-
+        printf("local_stall %d curr_id_struct_rr.dependency %d\n", local_stall, curr_id_struct_rr.dependency);
 		if (!local_stall) {
 			curr_id_struct_rr.dependency = false;
             
@@ -969,6 +968,8 @@ int register_read(CPU *cpu) {
                 stall = true;
             }
             else {
+                printf("enqueingggggggggggggggg\n");
+                curr_id_struct_rr.timestamp = cpu->clock_cycle;
                 rs_enqueue(curr_id_struct_rr);
             }
 			stall = false;
@@ -1498,6 +1499,10 @@ int branch_without_prediction(CPU *cpu, decoded_instruction branch_instruction) 
         squash_instrutions = 1;
         stall = 0;
     }
+    
+    printf("**************\n\n");
+	printf("                                       BR             : %s %d %d %d\n", branch_instruction.instruction, branch_instruction.value_1, branch_instruction.value_2, branch_instruction.wb_value);
+
     return 0;
 }
 
@@ -1510,7 +1515,6 @@ int branch_with_prediction(CPU *cpu, decoded_instruction branch_instruction) {
 	char *next_instruction_addr;
 
 	squash_instrutions = 0;
-	prev_id_struct_br = curr_id_struct_br;
 
 	// if (strlen(prev_id_struct_div.instruction) != 0 && !prev_id_struct_div.dependency) {
 	// 	curr_id_struct_br = prev_id_struct_div;
@@ -1591,6 +1595,7 @@ int branch_with_prediction(CPU *cpu, decoded_instruction branch_instruction) {
 	// else {
 	// 	strcpy(branch_instruction.instruction, "");
 	// }
+    printf("**************\n\n");
 	printf("                                       BR             : %s %d %d %d\n", branch_instruction.instruction, branch_instruction.value_1, branch_instruction.value_2, branch_instruction.wb_value);
 
 	return 0;
@@ -1739,12 +1744,16 @@ int write_back(CPU *cpu) {
                         if (curr_id_struct_rr.dependency) {
                             curr_id_struct_rr.dependency = false;
                             rs_enqueue(curr_id_struct_rr);
+                            printf("1 @@@@@@@@@@@@@@@ %s\n", curr_id_struct_rr.opcode);
 
                             /* execute the branch instruction that is present in RR stage */
                             if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
                                 strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
                                 curr_id_struct_rr.wb_value = curr_id_struct_wb[j].wb_value;
+                                printf("@@@@@@@@@@@@@@@ %s %d\n", curr_id_struct_rr.opcode, curr_id_struct_rr.wb_value);
                                 branch_without_prediction(cpu, curr_id_struct_rr);
+
+                                stall = false;
 
                                 rob_struct rob_data;
                                 rob_data.dest = -1;

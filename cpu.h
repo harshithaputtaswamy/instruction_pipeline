@@ -120,13 +120,13 @@ int arithmetic_operation(CPU *cpu);
 
 decoded_instruction add_stage(CPU *cpu);
 
-// int multiplier_stage_1(CPU *cpu);
+int multiplier_stage_1(CPU *cpu);
 
 decoded_instruction multiplier_stage_2(CPU *cpu);
 
-// int division_stage_1(CPU *cpu);
+int division_stage_1(CPU *cpu);
 
-// int division_stage_2(CPU *cpu);
+int division_stage_2(CPU *cpu);
 
 decoded_instruction division_stage_3(CPU *cpu);
 

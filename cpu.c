@@ -193,9 +193,19 @@ CPU *CPU_init() {
     }
 
     curr_add_stage_1 = empty_instruction;
-    curr_div_stage_3 = empty_instruction;
+
+    curr_mul_stage_1 = empty_instruction;
     curr_mul_stage_2 = empty_instruction;
+
+    curr_div_stage_1 = empty_instruction;
+    curr_div_stage_2 = empty_instruction;
+    curr_div_stage_3 = empty_instruction;
+
+    curr_mem_stage_1 = empty_instruction;
+    curr_mem_stage_2 = empty_instruction;
+    curr_mem_stage_3 = empty_instruction;
     curr_mem_stage_4 = empty_instruction;
+
 	return cpu;
 }
 
@@ -562,65 +572,19 @@ int register_read(CPU *cpu) {
 
         /* Renaming registers */
 
-        /*Rename the operands 1 and 2 values*/
+        /*Rename the operands 1 and 2 values if they are present in the ROB buffer else don't rename*/
         register_address = curr_id_struct_rr.operand_1;
-        if (strstr(register_address, "R")) {
-            register_address += 1;
-            addr = atoi(register_address);
-
-            for (int i = 0; i < ROB_SIZE; i++) {
-                if (rob_queue.buffer[i].dest == addr) {         // comparing operand 1 register address
-                    if (rob_queue.buffer[i].completed == 0) {
-                        strcpy(rename_address, "ROB");
-                        sprintf(dest_num, "%d", i);
-                        strcat(rename_address, dest_num);
-                        strcpy(curr_id_struct_rr.operand_1, rename_address);
-                        operand_1_inuse = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (curr_id_struct_rr.num_var == 5) {
-            register_address = curr_id_struct_rr.operand_2;
-            if (strstr(register_address, "R")) {
-                register_address += 1;
-                addr = atoi(register_address);
-
-                for (int i = 0; i < ROB_SIZE; i++) {
-                    if (rob_queue.buffer[i].dest == addr) {             // comparing operand 2 register address
-                        if (rob_queue.buffer[i].completed == 0) {
-                            strcpy(rename_address, "ROB");
-                            sprintf(dest_num, "%d", i);
-                            strcat(rename_address, dest_num);
-                            strcpy(curr_id_struct_rr.operand_2, rename_address);
-                            operand_2_inuse = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        /* checking if the current register is in use in ROB buffer */
-        register_address = curr_id_struct_rr.register_addr;
-        printf("curr_id_struct_rr %s %s\n", curr_id_struct_rr.instruction, register_address);
-
-        // if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
-        //     strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
-
         if (strstr(register_address, "R") || strstr(register_address, "ROB")) {
             if (strstr(register_address, "ROB")) {
                 register_address += 3;
                 addr = atoi(register_address);
-                for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
+                for (int i = rob_queue.rear; i != rob_queue.front - 1 && i != ROB_SIZE - 1; i = (i - 1 + ROB_SIZE) % ROB_SIZE) {
                     if (i == addr) {         // comparing output register address
                         if (rob_queue.buffer[i].completed == 0) {
                             strcpy(rename_address, "ROB");
                             sprintf(dest_num, "%d", i);
                             strcat(rename_address, dest_num);
-                            strcpy(curr_id_struct_rr.register_addr, rename_address);
+                            strcpy(curr_id_struct_rr.operand_1, rename_address);
                             break;
                         }
                     }
@@ -629,83 +593,152 @@ int register_read(CPU *cpu) {
             else {
                 register_address += 1;
                 addr = atoi(register_address);      // get the register address in instruction
-                for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
+                for (int i = rob_queue.rear; i != rob_queue.front - 1 && i != ROB_SIZE - 1; i = (i - 1 + ROB_SIZE) % ROB_SIZE) {
                     if (rob_queue.buffer[i].dest == addr) {         // comparing output register address
                         if (rob_queue.buffer[i].completed == 0) {
                             strcpy(rename_address, "ROB");
                             sprintf(dest_num, "%d", i);
                             strcat(rename_address, dest_num);
-                            strcpy(curr_id_struct_rr.register_addr, rename_address);
+                            strcpy(curr_id_struct_rr.operand_1, rename_address);
                             break;
                         }
-                        
                     }
-                    if (((i + 1) % ROB_SIZE) == rob_queue.rear ) {
+                }
+            }
+        }
+
+        if (curr_id_struct_rr.num_var == 5) {
+            register_address = curr_id_struct_rr.operand_2;
+            if (strstr(register_address, "R") || strstr(register_address, "ROB")) {
+                if (strstr(register_address, "ROB")) {
+                    register_address += 3;
+                    addr = atoi(register_address);
+                    for (int i = rob_queue.rear; i != rob_queue.front - 1 && i != ROB_SIZE - 1; i = (i - 1 + ROB_SIZE) % ROB_SIZE) {
+                        if (i == addr) {         // comparing output register address
+                            if (rob_queue.buffer[i].completed == 0) {
+                                strcpy(rename_address, "ROB");
+                                sprintf(dest_num, "%d", i);
+                                strcat(rename_address, dest_num);
+                                strcpy(curr_id_struct_rr.operand_2, rename_address);
+                                break;
+                            }
+                        }
+                    }
+                }
+                else {
+                    register_address += 1;
+                    addr = atoi(register_address);      // get the register address in instruction
+                    for (int i = rob_queue.rear; i != rob_queue.front - 1 && i != ROB_SIZE - 1; i = (i - 1 + ROB_SIZE) % ROB_SIZE) {
+                        if (rob_queue.buffer[i].dest == addr) {         // comparing output register address
+                            if (rob_queue.buffer[i].completed == 0) {
+                                strcpy(rename_address, "ROB");
+                                sprintf(dest_num, "%d", i);
+                                strcat(rename_address, dest_num);
+                                strcpy(curr_id_struct_rr.operand_2, rename_address);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* checking if the current register is in use in ROB buffer */
+        
+        if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
+            strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
+
+            register_address = curr_id_struct_rr.register_addr;
+            printf("curr_id_struct_rr %s %s\n", curr_id_struct_rr.instruction, register_address);
+
+            if (strstr(register_address, "R") || strstr(register_address, "ROB")) {
+                if (strstr(register_address, "ROB")) {
+                    register_address += 3;
+                    addr = atoi(register_address);
+                    for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
+                        if (i == addr) {         // comparing output register address
+                            if (rob_queue.buffer[i].completed == 0) {
+                                strcpy(rename_address, "ROB");
+                                sprintf(dest_num, "%d", i);
+                                strcat(rename_address, dest_num);
+                                strcpy(curr_id_struct_rr.register_addr, rename_address);
+                                break;
+                            }
+                        }
+                    }
+                }
+                else {
+                    register_address += 1;
+                    addr = atoi(register_address);      // get the register address in instruction
+                    for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
+                        if (rob_queue.buffer[i].dest == addr) {         // comparing output register address
+                            if (rob_queue.buffer[i].completed == 0) {
+                                strcpy(rename_address, "ROB");
+                                sprintf(dest_num, "%d", i);
+                                strcat(rename_address, dest_num);
+                                strcpy(curr_id_struct_rr.register_addr, rename_address);
+                                break;
+                            }
+                            
+                        }
+                        if (((i + 1) % ROB_SIZE) == rob_queue.rear ) {
                             strcpy(rename_address, "ROB");
                             sprintf(dest_num, "%d", rob_queue.rear);
                             strcat(rename_address, dest_num);
                             strcpy(curr_id_struct_rr.register_addr, rename_address);
                         }
-                }
-            }
-
-            if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
-                strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez"))
-             {
-                register_address = curr_id_struct_rr.org_register_addr;
-                if (strstr(register_address, "R")){
-                    register_address += 1;
-                    addr = atoi(register_address);
-
-                    if (cpu->regs[addr].arith_done == 0) {
-                        register_addr_inuse = true;
-                        local_stall = true;
                     }
                 }
-
-                if (strcmp(curr_id_struct_rr.org_register_addr, prev_id_struct_rr.org_register_addr) == 0) {
-                    local_stall = true;
-                    printf("***************\n\n\n");
-                    printf("prev_id_struct_rr. %s\n", prev_id_struct_rr.instruction);
-                }
             }
-
-            /* Check for operands and register address in IS stage */
-            // if (strlen(prev_id_struct_rr.instruction) && strcmp(prev_id_struct_rr.opcode, "st") != 0) {
-            // // 
-            //     // if (strcmp(prev_id_struct_rr.opcode, "add") != 0 && strcmp(prev_id_struct_rr.opcode, "sub") != 0 && strcmp(prev_id_struct_rr.opcode, "set") != 0) {
-
-            //         if (curr_id_struct_rr.num_var == 5 && strcmp(curr_id_struct_rr.org_operand_2, prev_id_struct_rr.org_register_addr) == 0) {
-            //             local_stall = true;
+        }
+        else {
+            register_address = curr_id_struct_rr.register_addr;
+            register_address += 1;
+            addr = atoi(register_address);      // get the register address in instruction
+            // for (int i = rob_queue.front; i != rob_queue.rear; i = (i + 1) % ROB_SIZE) {
+            //     if (rob_queue.buffer[i].dest == addr) {         // comparing output register address
+            //         if (rob_queue.buffer[i].completed == 0) {
+            //             strcpy(rename_address, "ROB");
+            //             sprintf(dest_num, "%d", i);
+            //             strcat(rename_address, dest_num);
+            //             strcpy(curr_id_struct_rr.register_addr, rename_address);
+            //             break;
             //         }
-            //         printf("^^^^^^^^^^^^^^local stall 997: %d\n", local_stall);
-            //         if (strcmp(curr_id_struct_rr.operand_1, prev_id_struct_rr.org_register_addr) == 0) {
-            //             local_stall = true;
-            //         }
-            //         printf("^^^^^^^^^^^^^^local stall 998: %d\n", local_stall);
-            //         if (strcmp(curr_id_struct_rr.org_register_addr, prev_id_struct_rr.org_register_addr) == 0 && strcmp(curr_id_struct_rr.opcode, "st") == 0) {
-            //             local_stall = true;
-            //         }
-            //         printf("^^^^^^^^^^^^^^local stall 999: %d\n", local_stall);
-            //         if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
-            //             strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez")) {
-            //             if (strcmp(curr_id_struct_rr.org_register_addr, prev_id_struct_rr.org_register_addr) == 0) {
-            //                 local_stall = true;
-            //                 printf("***************\n\n\n");
-            //                 printf("prev_id_struct_rr. %s\n", prev_id_struct_rr.instruction);
-            //             }
-            //         }
-            //     // }
-            // // }
+                    
+            //     }
+                // if (((i + 1) % ROB_SIZE) == rob_queue.rear ) {
+                    strcpy(rename_address, "ROB");
+                    sprintf(dest_num, "%d", rob_queue.rear);
+                    strcat(rename_address, dest_num);
+                    strcpy(curr_id_struct_rr.register_addr, rename_address);
+                // }
             // }
-            printf("^^^^^^^^^^^^^^local stall 100: %d\n", local_stall);
-        
-
-
-            printf("register_addr_inuse %d\n", register_addr_inuse);
         }
 
         /* end of renaming */
+
+        /* for branch instructions check if register address is same as in IS stage*/
+        if (strstr(curr_id_struct_rr.opcode, "bez") || strstr(curr_id_struct_rr.opcode, "blez") || strstr(curr_id_struct_rr.opcode, "bltz") || 
+            strstr(curr_id_struct_rr.opcode, "bgez") || strstr(curr_id_struct_rr.opcode, "bgtz") || strstr(curr_id_struct_rr.opcode, "bez"))
+            {
+            register_address = curr_id_struct_rr.org_register_addr;
+            if (strstr(register_address, "R")){
+                register_address += 1;
+                addr = atoi(register_address);
+
+                if (cpu->regs[addr].arith_done == 0) {
+                    register_addr_inuse = true;
+                    local_stall = true;
+                }
+            }
+
+            if (strcmp(curr_id_struct_rr.org_register_addr, prev_id_struct_rr.org_register_addr) == 0) {
+                local_stall = true;
+                printf("***************\n\n\n");
+                printf("prev_id_struct_rr. %s\n", prev_id_struct_rr.instruction);
+            }
+        }
+
 
 		if (strcmp(curr_id_struct_rr.opcode, "ret") != 0) {
 
@@ -923,13 +956,35 @@ int instruction_issue(CPU *cpu) {
     decoded_instruction *rs_instruction;
 
     for (int rs_idx = rs_queue.front; rs_idx != rs_queue.rear; rs_idx = (rs_idx + 1) % (RS_SIZE + 1)) {
-        printf("-------rs instruction %s\n", rs_queue.instructions[rs_idx].instruction);
-        if (strlen(rs_queue.instructions[rs_idx].instruction) && rs_queue.instructions[rs_idx].timestamp < cpu->clock_cycle) {
-            rs_queue.instructions[rs_idx].dependency = false;
+        // for (int rs_idx_next = rs_queue.front + 1; rs_idx_next != rs_queue.rear; rs_idx_next = (rs_idx_next + 1) % (RS_SIZE + 1)) {
+            printf("-------rs instruction %s\n", rs_queue.instructions[rs_idx].instruction);
+            if (strlen(rs_queue.instructions[rs_idx].instruction) && rs_queue.instructions[rs_idx].timestamp < cpu->clock_cycle) {
+                rs_queue.instructions[rs_idx].dependency = false;
 
-            register_address = rs_queue.instructions[rs_idx].org_operand_1;
-            printf("register addr %s\n", register_address);
-            if (strstr(register_address, "R")) {
+                register_address = rs_queue.instructions[rs_idx].org_operand_1;
+                printf("register addr %s\n", register_address);
+                if (strstr(register_address, "R")) {
+                    register_address += 1;
+                    addr = atoi(register_address);
+                    if (cpu->regs[addr].arith_done == 0) {
+                        rs_queue.instructions[rs_idx].dependency = true;
+                    }
+                    printf("^^^^ arith done %d rs_queue.instructions[rs_idx].dependency 999: %d\n", cpu->regs[addr].arith_done, rs_queue.instructions[rs_idx].dependency);
+                }
+
+                register_address = rs_queue.instructions[rs_idx].org_operand_2;
+                printf("register addr %s\n", register_address);
+                if (strstr(register_address, "R")) {
+                    register_address += 1;
+                    addr = atoi(register_address);
+                    if (cpu->regs[addr].arith_done == 0) {
+                        rs_queue.instructions[rs_idx].dependency = true;
+                    }
+                    printf("^^^^ arith done %d rs_queue.instructions[rs_idx].dependency 999: %d\n", cpu->regs[addr].arith_done, rs_queue.instructions[rs_idx].dependency);
+                }
+
+                register_address = rs_queue.instructions[rs_idx].org_register_addr;
+                printf("register addr %s\n", register_address);
                 register_address += 1;
                 addr = atoi(register_address);
                 if (cpu->regs[addr].arith_done == 0) {
@@ -937,28 +992,7 @@ int instruction_issue(CPU *cpu) {
                 }
                 printf("^^^^ arith done %d rs_queue.instructions[rs_idx].dependency 999: %d\n", cpu->regs[addr].arith_done, rs_queue.instructions[rs_idx].dependency);
             }
-
-            register_address = rs_queue.instructions[rs_idx].org_operand_2;
-            printf("register addr %s\n", register_address);
-            if (strstr(register_address, "R")) {
-                register_address += 1;
-                addr = atoi(register_address);
-                if (cpu->regs[addr].arith_done == 0) {
-                    rs_queue.instructions[rs_idx].dependency = true;
-                }
-                printf("^^^^ arith done %d rs_queue.instructions[rs_idx].dependency 999: %d\n", cpu->regs[addr].arith_done, rs_queue.instructions[rs_idx].dependency);
-            }
-
-            register_address = rs_queue.instructions[rs_idx].org_register_addr;
-            printf("register addr %s\n", register_address);
-            register_address += 1;
-            addr = atoi(register_address);
-            if (cpu->regs[addr].arith_done == 0) {
-                rs_queue.instructions[rs_idx].dependency = true;
-            }
-            printf("^^^^ arith done %d rs_queue.instructions[rs_idx].dependency 999: %d\n", cpu->regs[addr].arith_done, rs_queue.instructions[rs_idx].dependency);
-
-        }
+        // }
     }
 
     for (int i = 0; i < RS_SIZE; i++) {
@@ -969,69 +1003,6 @@ int instruction_issue(CPU *cpu) {
 
         printf("rs_instruction->dependency %d\n", rs_instruction->dependency);
         if (strlen(rs_instruction->instruction) && rs_instruction->timestamp < cpu->clock_cycle && !rs_instruction->dependency) {     // check for instructions added before the current cycle
-
-            /* TODO: is this needed if forwarding is enabled??? Forwarding to be done*/
-            // Although the value in ROB gets updates in WR stage, forwarding should happen at the end of arthmetic ops stage4
-            // that's why the branch instruction waited till arithmetic stage was done and got executed in the next cycle
-
-            // TODO: get the values from ROB table when arith_done flag is set to 0
-            /*
-            strcpy(operands[0], rs_instruction->operand_1);
-			strcpy(operands[1], rs_instruction->operand_2);
-
-            for (int j = 3; j < rs_instruction->num_var; j++) {
-				register_address = operands[j - 3];
-				if (strstr(operands[j - 3], "#")) {
-					register_address += 1;
-					addr = atoi(register_address);
-					if (addr > 999) {
-						values[j - 3] = memory_map[(addr)/4];   // Read from memory map file
-					}
-					else {
-						values[j - 3] = addr;   //use the value given
-					}
-				}
-				else if (strstr(register_address, "ROB") || strstr(register_address, "R")){
-                    if (strstr(register_address, "ROB")) {
-                        register_address += 3;
-    					addr = rob_queue.buffer[atoi(register_address)].dest;
-                        
-                        if (cpu->regs[addr].arith_done) {
-                            values[j - 3] = cpu->regs[addr].value;
-                        }
-                        else {
-                            values[j - 3] = rob_queue.buffer[atoi(register_address)].result;
-                        }
-                    }
-                    else {
-                        register_address += 1;
-    					addr = atoi(register_address);
-                        
-                        if (cpu->regs[addr].is_valid) {
-                            values[j - 3] = cpu->regs[addr].value;
-                            for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
-                                if (rob_queue.buffer[rob_idx].dest == addr && rob_queue.buffer[rob_idx].completed) {
-                                    if(rob_queue.buffer[rob_idx].result != values[j - 3]) {
-                                        values[j - 3] = rob_queue.buffer[rob_idx].result;
-                                    }
-                                }
-                            }
-                        }
-                        else {
-                            for (int rob_idx = rob_queue.front; rob_idx != rob_queue.rear; rob_idx = (rob_idx + 1) % (ROB_SIZE)) {
-                                if (rob_queue.buffer[rob_idx].dest == addr) {
-                                    values[j - 3] = rob_queue.buffer[rob_idx].result;
-                                }
-                            }
-                        }
-                        
-                    }
-                }
-            }
-            
-            rs_instruction->value_1 = values[0];
-            rs_instruction->value_2 = values[1];
-            */
 
             if (strcmp(rs_instruction->opcode, "mul") == 0) {
                 curr_mul_stage_1 = *rs_instruction;
@@ -1090,10 +1061,10 @@ int arithmetic_operation(CPU *cpu) {
     }
     
     add_stage(cpu);
-    // multiplier_stage_1(cpu);
+    multiplier_stage_1(cpu);
     multiplier_stage_2(cpu);
-    // division_stage_1(cpu);
-    // division_stage_2(cpu);
+    division_stage_1(cpu);
+    division_stage_2(cpu);
     division_stage_3(cpu);
     memory_1(cpu);
     memory_2(cpu);
@@ -1210,10 +1181,10 @@ decoded_instruction add_stage(CPU *cpu) {
 
 int multiplier_stage_1(CPU *cpu) {
 
-    prev_mul_stage_1 = curr_mul_stage_1;
+    prev_mul_stage_2 = curr_mul_stage_2;
 	curr_mul_stage_2 = prev_mul_stage_1;
 
-	printf("                                       Mul 1           : %s %d %d %d\n", curr_mul_stage_1.instruction, curr_mul_stage_1.value_1, curr_mul_stage_1.value_2, curr_mul_stage_1.wb_value);
+	printf("                                       Mul 1           : %s %d %d %d\n", prev_mul_stage_1.instruction, prev_mul_stage_1.value_1, prev_mul_stage_1.value_2, prev_mul_stage_1.wb_value);
 
 	return 0;
 }
@@ -1236,47 +1207,47 @@ decoded_instruction multiplier_stage_2(CPU *cpu) {
     decoded_instruction mul_instruction;
 	// if (strlen(prev_id_struct_add.instruction) && strcmp(prev_id_struct_mul.opcode, "ret")) {
 	// 	if (!prev_id_struct_add.dependency) {
-    if (strlen(curr_mul_stage_2.instruction) && curr_mul_stage_2.timestamp < cpu->clock_cycle) {
-        if (strcmp(curr_mul_stage_2.opcode, "mul") == 0) {
-            curr_mul_stage_2.wb_value = curr_mul_stage_2.value_1 * curr_mul_stage_2.value_2;
+    if (strlen(prev_mul_stage_2.instruction) && prev_mul_stage_2.timestamp < cpu->clock_cycle) {
+        if (strcmp(prev_mul_stage_2.opcode, "mul") == 0) {
+            prev_mul_stage_2.wb_value = prev_mul_stage_2.value_1 * prev_mul_stage_2.value_2;
 
 			// forwarding from mul to rr stage instruction
             
             for (int rs_idx = rs_queue.front; rs_idx != rs_queue.rear; rs_idx = (rs_idx + 1) % (RS_SIZE + 1)) {
 
-                if (strcmp(curr_mul_stage_2.opcode, "st")) {
-                    if (strcmp(rs_queue.instructions[rs_idx].org_operand_1, curr_mul_stage_2.org_register_addr) == 0) {
-                        rs_queue.instructions[rs_idx].value_1 = curr_mul_stage_2.wb_value;
+                if (strcmp(prev_mul_stage_2.opcode, "st")) {
+                    if (strcmp(rs_queue.instructions[rs_idx].org_operand_1, prev_mul_stage_2.org_register_addr) == 0) {
+                        rs_queue.instructions[rs_idx].value_1 = prev_mul_stage_2.wb_value;
                     }
-                    if (rs_queue.instructions[rs_idx].num_var == 5 && strcmp(rs_queue.instructions[rs_idx].org_operand_2, curr_mul_stage_2.org_register_addr) == 0) {
-                        rs_queue.instructions[rs_idx].value_2 = curr_mul_stage_2.wb_value;
+                    if (rs_queue.instructions[rs_idx].num_var == 5 && strcmp(rs_queue.instructions[rs_idx].org_operand_2, prev_mul_stage_2.org_register_addr) == 0) {
+                        rs_queue.instructions[rs_idx].value_2 = prev_mul_stage_2.wb_value;
                     }
-                    if (strcmp(rs_queue.instructions[rs_idx].org_register_addr, curr_mul_stage_2.org_register_addr) == 0) {
-                        rs_queue.instructions[rs_idx].wb_value = curr_mul_stage_2.wb_value;
+                    if (strcmp(rs_queue.instructions[rs_idx].org_register_addr, prev_mul_stage_2.org_register_addr) == 0) {
+                        rs_queue.instructions[rs_idx].wb_value = prev_mul_stage_2.wb_value;
                     }
                 }
-                if (strcmp(curr_mul_stage_2.opcode, "st") == 0) {
-                    if (strcmp(rs_queue.instructions[rs_idx].org_register_addr, curr_mul_stage_2.org_register_addr) == 0) {
-                        rs_queue.instructions[rs_idx].wb_value = curr_mul_stage_2.wb_value;
+                if (strcmp(prev_mul_stage_2.opcode, "st") == 0) {
+                    if (strcmp(rs_queue.instructions[rs_idx].org_register_addr, prev_mul_stage_2.org_register_addr) == 0) {
+                        rs_queue.instructions[rs_idx].wb_value = prev_mul_stage_2.wb_value;
                     }   
                 }
             }
 
-            register_address = curr_mul_stage_2.org_operand_1;
+            register_address = prev_mul_stage_2.org_operand_1;
             if (strstr(register_address, "R")){
                 register_address += 1;
                 addr = atoi(register_address);
                 cpu->regs[addr].arith_done = 1;
             }
-            if (curr_mul_stage_2.num_var == 5) {
-                register_address = curr_mul_stage_2.org_operand_2;
+            if (prev_mul_stage_2.num_var == 5) {
+                register_address = prev_mul_stage_2.org_operand_2;
                 if (strstr(register_address, "R")){
                     register_address += 1;
                     addr = atoi(register_address);
                     cpu->regs[addr].arith_done = 1;
                 }
             }
-            register_address = curr_mul_stage_2.org_register_addr;
+            register_address = prev_mul_stage_2.org_register_addr;
             if (strstr(register_address, "R")){
                 register_address += 1;
                 addr = atoi(register_address);
@@ -1284,19 +1255,19 @@ decoded_instruction multiplier_stage_2(CPU *cpu) {
                 printf("cpu->regs[addr].arith_done %d, addr %d\n", cpu->regs[addr].arith_done, addr);
             }
 
-            curr_id_struct_arith[1] = curr_mul_stage_2;
-            printf("                                       MUL 2            : %s %d %d %d\n", curr_mul_stage_2.instruction, curr_mul_stage_2.value_1, curr_mul_stage_2.value_2, curr_mul_stage_2.wb_value);
+            curr_id_struct_arith[1] = prev_mul_stage_2;
+            printf("                                       MUL 2            : %s %d %d %d\n", prev_mul_stage_2.instruction, prev_mul_stage_2.value_1, prev_mul_stage_2.value_2, prev_mul_stage_2.wb_value);
         }
     }
 
-	return curr_mul_stage_2;
+	return prev_mul_stage_2;
 }
 
 
 int division_stage_1(CPU *cpu) {
 
     prev_div_stage_2 = curr_div_stage_2;
-	curr_div_stage_3 = prev_div_stage_2;
+	curr_div_stage_2 = prev_div_stage_1;
 
 	printf("                                       Mul 1           : %s %d %d %d\n", curr_div_stage_2.instruction, curr_div_stage_2.value_1, curr_div_stage_2.value_2, curr_div_stage_2.wb_value);
 
@@ -1307,7 +1278,7 @@ int division_stage_1(CPU *cpu) {
 int division_stage_2(CPU *cpu) {
 
     prev_div_stage_3 = curr_div_stage_3;
-	curr_div_stage_3 = prev_div_stage_3;
+	curr_div_stage_3 = prev_div_stage_2;
 
 	printf("                                       Mul 1           : %s %d %d %d\n", curr_div_stage_2.instruction, curr_div_stage_2.value_1, curr_div_stage_2.value_2, curr_div_stage_2.wb_value);
 

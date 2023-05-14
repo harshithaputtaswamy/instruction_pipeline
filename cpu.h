@@ -16,6 +16,7 @@ typedef struct Register {
                      // False: register is ready
     int is_valid; 
     int tag;
+    int arith_done;
 } Register;
 
 
@@ -42,6 +43,9 @@ typedef struct decoded_instruction {
     char instruction[MAX_INSTRUCTION_LENGTH];
     int addr;
     char opcode[5];
+    char org_register_addr[6];
+    char org_operand_1[6];
+    char org_operand_2[6];
     char register_addr[6];
     char operand_1[6];
     char operand_2[6];
@@ -114,11 +118,17 @@ int instruction_issue(CPU *cpu);
 
 int arithmetic_operation(CPU *cpu);
 
-decoded_instruction add_stage(CPU *cpu, decoded_instruction instruction);
+decoded_instruction add_stage(CPU *cpu);
 
-decoded_instruction multiplier_stage(CPU *cpu, decoded_instruction instruction);
+// int multiplier_stage_1(CPU *cpu);
 
-decoded_instruction division_stage(CPU *cpu, decoded_instruction instruction);
+decoded_instruction multiplier_stage_2(CPU *cpu);
+
+// int division_stage_1(CPU *cpu);
+
+// int division_stage_2(CPU *cpu);
+
+decoded_instruction division_stage_3(CPU *cpu);
 
 int branch_with_prediction(CPU *cpu, decoded_instruction instruction);
 
@@ -126,7 +136,11 @@ int branch_without_prediction(CPU *cpu, decoded_instruction instruction);
 
 int memory_1(CPU *cpu);
 
-decoded_instruction memory_2(CPU *cpu, decoded_instruction instruction);
+int memory_2(CPU *cpu);
+
+int memory_3(CPU *cpu);
+
+decoded_instruction memory_4(CPU *cpu);
 
 int write_back(CPU *cpu);
 
